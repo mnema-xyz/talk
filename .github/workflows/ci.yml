@@ -413,10 +413,10 @@ jobs:
               pkgs='./internal/server' ;;
             realtime) pkgs='./internal/bot ./internal/chat/...' ;;
             rest-a|rest-b)
-              rest='/internal/(server|bot)$|/internal/chat(/|$)'
-              node scripts/test-shard.mjs check-pkgs 2 "$rest"
+              rest=(./internal/server ./internal/bot ./internal/chat/...)
+              node scripts/test-shard.mjs check-pkgs 2 "${rest[@]}"
               n=1; [ "$SHARD" = rest-b ] && n=2
-              pkgs="$(node scripts/test-shard.mjs pkgs "$n/2" "$rest")" ;;
+              pkgs="$(node scripts/test-shard.mjs pkgs "$n/2" "${rest[@]}")" ;;
           esac
           make coverage-go-profile GO_PKGS="$pkgs" COVERAGE_OUT="coverage-$SHARD.out"
 
