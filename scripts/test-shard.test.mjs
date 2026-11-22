@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { balance, fnv1a, parseList, partition, problems, runRegex, shardOf } from './test-shard.mjs'
+import { balance, fnv1a, parseList, partition, problems, runRegex, shardOf, without } from './test-shard.mjs'
 
 const names = Array.from({ length: 400 }, (_, i) => `TestCase${i}`)
 
@@ -47,4 +47,10 @@ test('balance is deterministic, covers every item once and evens the load', () =
   assert.deepEqual(problems(items, shards), [])
   const load = shards.map((s) => s.reduce((n, i) => n + (weights[i] ?? 10), 0))
   assert.ok(Math.abs(load[0] - load[1]) <= 20, `${load}`)
+})
+
+test('without drops exactly the excluded packages, not ones that share a prefix', () => {
+  const all = ['m/internal/server', 'm/internal/serverutil', 'm/internal/chat', 'm/internal/chat/dm']
+  assert.deepEqual(without(all, ['m/internal/server', 'm/internal/chat/dm']), ['m/internal/serverutil', 'm/internal/chat'])
+  assert.deepEqual(without(all, []), all)
 })
