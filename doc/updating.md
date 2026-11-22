@@ -34,7 +34,7 @@ Which way is available depends on the tag in `MNEMA_IMAGE` in `.env`:
 
 | `MNEMA_IMAGE` tag | Follows | One-click button | Command line |
 |---|---|---|---|
-| `:X.Y` (for example `:2.1`) | all patch releases of that line | yes, until the next minor line | `docker compose pull && docker compose up -d`; a new minor line is a deliberate tag change |
+| `:X.Y` (for example `:3.3`) | all patch releases of that line | yes, until the next minor line | `docker compose pull && docker compose up -d`; a new minor line is a deliberate tag change |
 | `:latest` | every release, breaking ones included | always | `docker compose pull && docker compose up -d` |
 | `:X.Y.Z` or `@sha256:…` | nothing (pinned) | no; the System tab shows the steps | [pinned procedure](#pinned-or-new-minor-line) |
 | `mnema-talk:local` (built on the server) | your checkout | no | `git fetch --tags && git checkout vX.Y.Z && docker compose up -d --build` |
@@ -42,8 +42,16 @@ Which way is available depends on the tag in `MNEMA_IMAGE` in `.env`:
 The setup assistant writes a tag for the version it came with. Pinned tags are
 the most predictable: you choose each version and can go back by setting the
 old one. `:X.Y` is the practical middle ground: a `fix:` release bumps the patch
-and a `feat:` release the minor, so `:X.Y` receives only fixes. There is no
-`:X` tag. Releases publish `X.Y.Z`, `X.Y` and `latest`.
+and a `feat:` release the minor, so `:X.Y` receives only fixes. GHCR has no
+`:X` tag: releases publish `X.Y.Z`, `X.Y` and `latest` there (the Docker Hub
+mirror also carries `:X`).
+
+**Still on `ghcr.io/msch128/mnema-talk`?** That path got its last release with
+3.2.1 when the repository moved to the mnema-xyz organization, and GHCR does
+not redirect: a pull there finds nothing new. Set `MNEMA_IMAGE` to
+`ghcr.io/mnema-xyz/mnema-talk` with the same tag, then
+`docker compose pull && docker compose up -d`. Admin > System says so while the
+old path is set, and the "Update now" button refuses until it is changed.
 
 ### The "Update now" button
 

@@ -92,8 +92,9 @@ an older web client without the gaming bridge cannot activate these surfaces.
   **background opacity** slider (default 55%). Use the
   native **Gaming** menu in the main client or instance selector to open these
   settings even without Talk or a game, including when the overlay is disabled.
-- The client includes a [300-game executable reference](#windows-game-detection).
-  Additional executable basenames can be configured for other games or installation
+- The client recognises games from your launchers' libraries and a
+  [bundled list of about 600 games](#windows-game-detection). Additional
+  executable basenames can be configured for other games or installation
   variants. Existing custom names and shortcuts are preserved.
 - Leaving Talk, losing the connection or moving to another application hides
   both surfaces. No own Talk connection means no sidepeek or voice overlay.
@@ -101,7 +102,8 @@ an older web client without the gaming bridge cannot activate these surfaces.
   A renderer stall cannot extend the last granted lease.
 
 This is an unsigned Windows DEV integration using ordinary topmost windows,
-foreground process inspection and polling of configured keys. It does not inject
+a focus-change notification for the foreground process and Raw Input events for
+the configured keys (no key polling, no keyboard hook). It does not inject
 into games or capture a keyboard history. A matching basename is a user-selected
 candidate, not a trusted executable identity. Exclusive fullscreen rendering,
 anti-cheat compatibility and real-game behavior require testing on the target
@@ -113,19 +115,25 @@ hardware. Chat and attachments stay readable by the server.
 
 ### Windows game detection
 
-The Desktop DEV client bundles a reference of 300 games. It checks
-only the visible foreground window's executable basename against that reference
-and your additional executable names. There is no game injection, background
-process enumeration or runtime catalog download. Paths and window titles are
-not sent to the instance. A matching name is a detection hint, not proof of
-executable identity or exclusive fullscreen support.
+Detection starts from the operating system's notification that the focused
+application changed and looks only at that one process. It is recognised, in
+this order, by the executable names you added, by the install folders your
+launchers report (Steam, Epic Games Store, GOG Galaxy and the EA app, read-only
+from their own manifests and registry keys; Battle.net is not read), and by a
+bundled list of about 600 well-known PC games. There is no game injection,
+background process enumeration or runtime catalog download. Paths and window
+titles are not sent to the instance. A matching name is a detection hint, not
+proof of executable identity or exclusive fullscreen support. The details are
+in the desktop repository's
+[gaming reference](https://github.com/mnema-xyz/talk-desktop/blob/main/GAMING.md).
 
-The reference includes World of Warcraft, Genshin Impact, Star Wars: Empire at
+The bundled list includes World of Warcraft, Genshin Impact, Star Wars: Empire at
 War, Payday 1–3, Act of Aggression, Wardogs, Minecraft, League of Legends, Elder
 Scrolls Online, Black Desert, Call of Duty and Beyond All Reason. Several titles
-have multiple executable variants. Java Minecraft additionally requires a window
-title containing “Minecraft”, so unrelated Java applications do not activate
-Gaming. Modded launchers with different titles may need further detection work.
+have multiple executable variants. Java is never matched by name: Java Minecraft
+requires a window title containing “Minecraft”, so unrelated Java applications
+do not activate Gaming. Modded launchers with different titles may need further
+detection work.
 
 #### Settings
 
@@ -143,30 +151,21 @@ or replace the bundled Gaming surfaces.
 
 #### Reference sources and scope
 
-The [bundled catalog](https://github.com/mnema-xyz/talk-desktop/blob/main/src/game-catalog.json) records source URLs and
-its retrieval date. It combines requested games, Valve's
-[most-played snapshot](https://api.steampowered.com/ISteamChartsService/GetMostPlayedGames/v1/)
-and a [SteamSpy snapshot](https://steamspy.com/api.php?request=all&page=0), using
-concurrent players within the returned 1,000-title subset. This is a curated
-300-title reference, **not a global ranking of the 300 most-played games**.
-
-Executable basenames come from Discord's public
-[detectable applications catalog](https://discord.com/api/v9/applications/detectable),
-with additional developer references for
-[Wardogs](https://steamcommunity.com/app/1867240/discussions/3/562541966849738867/)
-and [Beyond All Reason](https://www.beyondallreason.info/faq).
-Only factual titles and executable names are included, without artwork or SDK code.
-Launcher entries and generic helper executables are excluded.
-
-Discord also supports manually registering games and Rich Presence, as described
-in its [activity sharing guide](https://support.discord.com/hc/en-us/articles/7931156448919-Activity-Sharing-on-Discord-FAQ).
-Mnema uses the narrower foreground-window approach above. A catalog entry does
-not qualify every installation variant, anti-cheat system or fullscreen mode.
+The [bundled list](https://github.com/mnema-xyz/talk-desktop/blob/main/src/game-list.json)
+is maintained by hand from public knowledge of the executable names games ship:
+a display name, one or more executable names and, for some, a Steam app id. No
+third-party list, database, API response or website was copied or scraped, and
+nothing from Discord's detectable-applications list is used; the file's header
+states this provenance. It is deliberately not complete and has not been
+checked against installed copies, which is why the launcher libraries and the
+names you add come first. Launcher entries and generic helper executables are
+excluded. A list entry does not qualify every installation variant,
+anti-cheat system or fullscreen mode.
 
 ## Product requirements
 
 The desktop app bundles the existing Vue/TypeScript interface locally and connects
-to self-hosted communities (up to nine side by side, each fully separate). Each community supplies API data, never executable
+to self-hosted communities (any number side by side, each fully separate). Each community supplies API data, never executable
 client code. Tauri v2 is the shell on Windows and macOS. Linux uses Electron, because
 the WebKitGTK that Tauri uses there has no WebRTC. Changing shells does not
 itself solve end-to-end encryption or exclusive-fullscreen overlays.

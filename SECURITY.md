@@ -286,9 +286,12 @@ server. The desktop client removes server-served JavaScript by running a signed
 web bundle. Release images are signed with cosign. The sections below give the
 details and the limits.
 
-- **Invite-only.** There is no public registration. Only the Owner
-  (configurable, default `admin`) and members whose role holds *Manage
-  invites* can create invite codes.
+- **Invite-only.** There is no public registration. The Owner (configurable,
+  default `admin`) and members whose role holds *Manage invites* create invite
+  codes in the admin area; members holding *Create invites* (since 3.3, on
+  @everyone only on a fresh install) create their own, always with an expiry
+  and a use limit within the bounds the admins set
+  ([doc/invites.md](doc/invites.md)).
 - **Community icon (public, like the name).** `GET /api/community/icon` needs
   no session, also on an invite-only server: the community name next to it is
   public already (`GET /api/health`, the sign-in page, link previews) and an
@@ -635,7 +638,8 @@ details and the limits.
   same checks: the right to send in the channel, a rate limit and options
   validated against the command's definition. The moderation commands check the
   global permission first (*Timeout members*, *Ban members*, *Kick members*;
-  the last is off for @everyone and every existing role), then call the same
+  the last is off for @everyone; of the built-in roles only Moderator and
+  Admin hold it, since migration 0097), then call the same
   service as the admin routes, so the role hierarchy and the Owner's
   protection hold, and write the same audit entry. **Polls** keep anonymous votes anonymous by
   construction: the query that builds a poll never selects voter ids for an
@@ -1343,8 +1347,11 @@ details and the limits.
   Owner set one), all HTML-escaped; an unusable
   code, or a caller over the invite preview limit, gets the generic page.
   Invite pages ask for `noindex`.
-- **Outbound connections.** Besides link previews (`LINK_PREVIEWS_ENABLED`)
-  and optional STUN/TURN, the server only asks GitHub for the latest release
+- **Outbound connections.** Besides link previews (`LINK_PREVIEWS_ENABLED`),
+  the STUN lookup of its own public address (`WEBRTC_AUTO_ANNOUNCE`), the NTP
+  clock check (`CLOCK_CHECK_ENABLED`) and what an operator or member turns on
+  (mail, Web Push, outgoing webhooks, the template import; all listed in
+  [doc/ports.md](doc/ports.md#outbound-connections)), the server only asks GitHub for the latest release
   (`UPDATE_CHECK_ENABLED`, default on): an unauthenticated `GET` to
   `api.github.com/repos/mnema-xyz/talk/releases/latest` every 30 minutes
   with `If-None-Match`, a 10 s timeout, a 1 MiB response cap, redirects only
@@ -1393,13 +1400,14 @@ profile `autoupdate`, `UPDATER_TOKEN`). How it is built and why:
   followed). Without it the app offers no button and makes no call. Rotate it
   by changing `.env` and running
   `docker compose --profile autoupdate up -d`.
-- **Who can trigger it.** `POST /api/admin/system/update` is admin-only and
-  behind the same-origin CSRF check like every admin route. It asks for the
-  admin's current password again (bcrypt; 5 wrong passwords lock it together
+- **Who can trigger it.** `POST /api/admin/system/update` is Owner-only (the
+  whole System area is; no role grants it) and behind the same-origin CSRF
+  check like every admin route. It asks for the Owner's current password again
+  (bcrypt; 5 wrong passwords lock it together
   with password changes), runs at most once every 5 minutes, only while the
   update check knows a newer release and only for exactly that version, and
   is audit-logged (`"audit":"self_update"`, admin id, versions, client
-  address) whether it succeeds or not. A stolen admin session therefore cannot
+  address) whether it succeeds or not. A stolen Owner session therefore cannot
   update without the password, and even then can only restart the app on the
   image tag the operator configured.
 - **Residual risk.** A compromised updater or recreator image, or anyone who

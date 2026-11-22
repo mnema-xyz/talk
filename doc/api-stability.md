@@ -208,7 +208,7 @@ a variable, or widening a value range (a larger maximum a response may carry).
   of the newest release it has seen and connects to servers back to
   `min_server_version`. `web/src/compat/` holds what `v1.0.0`, `v2.0.0`,
   `v2.9.12` and `v2.9.18` promised (OpenAPI contract, health features, events;
-  made by `node scripts/compat-baseline.ts <tag>...`) and runs the app's own
+  made by `node scripts/compat-baseline.ts <tag>...` in `web/`) and runs the app's own
   stores and forms against it in the normal `vitest` run: every request body
   must fit that release's schema (the server rejects unknown fields), every
   endpoint must exist there, and every answer a release sends must pass the

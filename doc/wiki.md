@@ -137,7 +137,8 @@ between two (a line diff) and restores one.
 
 The [audit log](moderation.md#audit-log) records `wiki.create`, `wiki.edit`,
 `wiki.move` (move or rename), `wiki.delete`, `wiki.restore` (a revision or a
-deleted page) and `wiki.lock` (locked or unlocked), with the page and, for
+deleted page), `wiki.lock` (locked or unlocked) and `wiki.image` (a picture
+uploaded), with the page and, for
 edits, the revision number and summary.
 
 ## Search

@@ -60,7 +60,7 @@ temporary Talks, because nobody is in a Talk then.
 ## Start a Talk from a direct message
 
 A conversation has no call of its own. In the header of a direct message
-"Start a Talk" (`POST /api/dms/{id}/talk`) opens a temporary Talk **that belongs
+the call button ("Call (starts a Talk)", `POST /api/dms/{id}/talk`) opens a temporary Talk **that belongs
 to the conversation** and posts an **invitation card** into it. No lobby and no
 admin setup are needed, so it works on a fresh community. The Talk is a temporary
 Talk without a lobby (`is_temp`, `lobby_id` NULL) with `channels.dm_id` pointing

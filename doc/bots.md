@@ -434,7 +434,7 @@ security scheme `botAuth`).
 | `PATCH /channels/{id}/messages/{id}` | Send messages, own messages only; `content`, `components` (each optional, absent ones stay; `"components": []` removes them) and `allowed_mentions` (as on a post; an edit that sends it counts towards the 5 posts per 5 seconds of the channel, one without it notifies the members it names and never `@all`, `@here` or a role) |
 | `DELETE /channels/{id}/messages/{id}` | own messages; others' with Manage messages |
 | `PUT`, `DELETE /channels/{id}/messages/{id}/reactions/{emoji}/@me` | Add reactions (taking back always works); one emoji with and without U+FE0F is one reaction |
-| `POST /channels/{id}/upload` (multipart `file`, optional `content`, `allowed_mentions`, `parent_id`, `reply_to_id`) | Send messages and Attach files; the Owner's upload limit for the bot's roles applies |
+| `POST /channels/{id}/upload` (multipart `file`, optional `content`, `allowed_mentions`, `parent_id`, `reply_to_id`, `lifetime_seconds` as on a post) | Send messages and Attach files; the Owner's upload limit for the bot's roles applies |
 | `GET /media/{id}` | View channels for a channel attachment, or direct message membership; streams the attachment (`Content-Disposition: attachment`) |
 | `GET /members`, `GET /members/{id}` | the `GUILD_MEMBERS` intent allowed; only members who can view a channel the bot can view; id, name, avatar |
 
@@ -497,9 +497,9 @@ bytes and 120 a minute.
 `avatar_url`), `session_id`, `intents` (granted), `resume_gateway_url` and
 `heartbeat_interval`. `username` is the bot's name as members see it (its
 display name, as it always was); `handle` is the account's unique name, the
-one members type to mention it (`@bot-…`; a message's `mentions` lists the
-bot's `id`), so a bot can find `@` plus its handle in a text without the
-`GUILD_MEMBERS` intent. `GET /users/@me` carries both too.
+one members type to mention it (`@mnema_bot` for a bot named *Mnema Bot*, see
+*Mentions* above; a message's `mentions` lists the bot's `id`), so a bot can
+find `@` plus its handle in a text without the `GUILD_MEMBERS` intent. `GET /users/@me` carries both too.
 
 ### Presence updates
 
@@ -544,7 +544,7 @@ when they happened.
 
 | code | meaning |
 |---|---|
-| `4000` | session taken over by another connection |
+| `4000` | session taken over by another connection, or an internal error while starting the session (identify again) |
 | `4001`, `4002` | unknown opcode, undecodable frame |
 | `4003` | not authenticated (no IDENTIFY in time) |
 | `4004` | authentication failed: bad, revoked or expired token, bot disabled or deleted. Revoking a token or disabling a bot closes its open connections with this code **immediately** |
@@ -1077,7 +1077,9 @@ own translations.
 
 Adding a command means one type that implements `slash.Builtin`
 (`internal/slash`: a `Definition`, an `Available` check for rights beyond
-sending, and `Run`) and one line in `builtinCommands` (`internal/server`).
+sending, and `Run`) and one line in the list that registers it: `Commands`
+in `internal/slashcmd` for the commands there, which `builtinCommands`
+(`internal/server`) adds after `/poll`.
 Today there are these (the web app translates the menu texts):
 
 - **`/poll`** asks the channel a question. Options: `question` (up to 300
@@ -1186,6 +1188,8 @@ mutation is reported to the audit log.
 | `PUT /bots/{id}/access` | the access choice: selected channels or all channels (see [Give a bot access to every channel](#give-a-bot-access-to-every-channel)) |
 | `GET`, `POST /bots/{id}/tokens` | list, issue |
 | `POST /bots/{id}/tokens/{tokenID}/regenerate`, `DELETE ...` | rotate, revoke |
+| `GET /bots/{id}/commands` | the bot's slash commands, disabled ones included |
+| `PATCH`, `DELETE /bots/{id}/commands/{commandID}` | disable or enable a command, delete it |
 
 ## Differences from Discord
 
@@ -1196,7 +1200,7 @@ mutation is reported to the audit log.
 | Components | buttons, selects (string, user, role, mentionable, channel), modals, newer layout components | buttons, selects (string, user, role, channel), modals with text inputs; no mentionable select, no layout components |
 | Interaction tokens | 15 minutes | the same, kept in memory: a restart drops the ones in flight; components keep working, each click is a new interaction |
 | Ids | snowflakes | UUIDs |
-| A bot's names | `username` is the unique handle, `global_name` the display name | `username` is the display name (the name members see), `handle` the unique name members mention (`@bot-…`); there is no `global_name`. Kept this way because existing bots read `username` as the name (doc/api-stability.md) |
+| A bot's names | `username` is the unique handle, `global_name` the display name | `username` is the display name (the name members see), `handle` the unique name members mention (`@mnema_bot`); there is no `global_name`. Kept this way because existing bots read `username` as the name (doc/api-stability.md) |
 | Default access | bots get `@everyone` | bots get nothing until given a role |
 | Member list | bots are listed, with a BOT tag | the same; webhook authors are not listed and are tagged Webhook (Discord tags them BOT) |
 | The bot's role | every bot has a managed role named after it (the "integration" role) | the same: each bot has a managed role named after it, held by it only, renamed and deleted with it, with permissions under the bot invariant. Plus one shared managed role named Bot that every bot holds (it groups bots in the member list). Existing bots' grants were not moved into their new role |

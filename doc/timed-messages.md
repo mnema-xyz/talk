@@ -4,7 +4,7 @@ Three related features: a message can be sent with a **lifetime** after which
 the server deletes it; the Owner and Administrators get a finer
 **auto-delete** for channels (hours, days or weeks, the files only, a community
 default); and a file that is gone shows a quiet **"File removed"** tile in its
-place. Introduced in 3.1. The server advertises the lifetimes as
+place. Introduced in 3.2. The server advertises the lifetimes as
 `messages.lifetime` and the new auto-delete as `channels.auto_delete.v2` in the
 `features` of `GET /api/health`; a client offers neither unless it is listed.
 
@@ -131,7 +131,7 @@ theme's surface colour with a small icon and the words "File removed", in the
 place and at the size the file had. The server measures the width and height
 of a picture at upload (`width`, `height` on the attachment) and keeps them
 when the file is removed, so the tile takes the picture's size (never wider
-than the column) and nothing jumps; pictures uploaded before 3.1 and videos use
+than the column) and nothing jumps; pictures uploaded before 3.2 and videos use
 the standard tile size of their kind. Any other file (a text, a PDF, audio)
 keeps its row: its name, struck through, and "File removed" in place of its
 size. A removal by the Owner or by auto-delete reaches open clients at once

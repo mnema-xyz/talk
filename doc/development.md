@@ -6,8 +6,8 @@ commits, migrations, dependencies) apply to everyone.
 
 ## Setup
 
-Requirements: Go (see `go.mod`), Node 26 + npm, Docker, GNU make (on Windows use
-Git Bash or WSL). Run `make help` for all targets.
+Requirements: Go (see `go.mod`), Node 26 + npm, Python 3 (`make test-scripts`
+and `make check`), Docker, GNU make (on Windows use Git Bash or WSL). Run `make help` for all targets.
 
 ```sh
 make install-hooks   # pre-commit: gitleaks + gofmt
@@ -147,6 +147,7 @@ these jobs in parallel (rough wall times with warm caches):
 | `backend` | Verdict of `backend-checks` (gofmt, go vet, OpenAPI check, unit tests, build), five parallel `backend-integration` shards (`server-a`, `server-b`, `realtime`, `rest-a`, `rest-b`: unit + integration tests with coverage, a Postgres service each; `internal/server` is split in two by a hash of the test name, `scripts/test-shard.mjs`, and CI fails if a test is in no shard or in both; `rest` is split into two halves by package, balanced by the times in `scripts/test-shard-weights.json`, with the same check) and `backend-coverage` (merges the profiles, applies the coverage gates) | 6–8 min |
 | `govulncheck` | Go vulnerability scan | 1–2 min |
 | `frontend` | eslint, strict TypeScript, contract drift, vitest with coverage, build, `npm audit` | 2–3 min |
+| `sdk (node 24)`, `sdk (node 26)` | Checks out the bot SDKs at pinned commits ([bot-sdk-js](https://github.com/mnema-xyz/bot-sdk-js), [bot-sdk-go](https://github.com/mnema-xyz/bot-sdk-go)), runs their tests and the contract test `TestSDKContract` against a real server | in parallel |
 | `docker` | Image build for linux/amd64 + linux/arm64 (`docker-image`, not pushed), then smoke, install, backup, PostgreSQL upgrade drills and image scan | 6–9 min |
 | `upgrade-drill (<version>)` | One leg per supported source release (0.8.16, 0.9.0, 1.0.0, 1.1.0, 2.0.0, 2.9.12, 2.9.19, 3.0.13, 3.2.1, 3.3.5): install it, seed data through its API, upgrade to this build, back up and restore, check the old release refuses the migrated data | per leg, in parallel |
 | `e2e-build` | Builds the web bundle and server binary once for all e2e shards | 1–2 min |
@@ -173,7 +174,7 @@ never retried.
 
 ## Web UI building blocks
 
-The look of the web client comes from tokens and a few shared classes, not from per-view tweaks. The client uses Tailwind CSS 4: there is no `tailwind.config`, the tokens are in `@theme`,.
+The look of the web client comes from tokens and a few shared classes, not from per-view tweaks. The client uses Tailwind CSS 4: there is no `tailwind.config`; the tokens are in `@theme`.
 
 - `web/src/style.css` `@theme`: colours, radius scale (`rounded-sm` to `rounded-2xl`), elevation scale (`shadow-xs` to `shadow-2xl`), motion (`--ease-mnema`, 150 ms default, `animate-*` entry animations).
 - `web/src/styles/buttons.css`: `.btn` with `-primary`, `-secondary`, `-ghost`, `-danger`, `-danger-solid`, sizes `-sm`/`-lg`, `.btn-icon`, `.btn-link`, `.chip` (a choice in a row), `.choice-card`, and the keyboard focus ring. A loading button sets `aria-busy="true"`.

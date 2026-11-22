@@ -127,12 +127,16 @@ dropped and named in the preview.
   had it. Give the role the permissions it needs, or Administrator yourself, in
   *Roles* afterwards.
 - `CREATE_INSTANT_INVITE` is dropped: *Manage invites* opens the admin area here,
-  which is much more than creating an invite on Discord.
+  which is much more than creating an invite on Discord. The closer match,
+  *Create invites* ([member invites](invites.md)), is not mapped either; give it
+  in *Roles* afterwards if the role should bring people in.
 - `MANAGE_GUILD`, `MANAGE_WEBHOOKS` and the other Discord settings have no
   counterpart; webhooks are an admin tool that no role grants.
 - `READ_MESSAGE_HISTORY` is covered by *View channels*. Voice moderation
-  (`MUTE_MEMBERS`, `DEAFEN_MEMBERS`, `MOVE_MEMBERS`), nicknames, threads, events,
+  (`MUTE_MEMBERS`, `DEAFEN_MEMBERS`, `MOVE_MEMBERS`), nicknames, threads,
   embeds, external emoji, soundboard, applications and so on do not exist here.
+  `MANAGE_EVENTS` is dropped too, although community events exist; give
+  *Manage events* in *Roles* afterwards.
 - A permission that is not a channel permission is dropped from overwrites.
 - Bits Discord added after this table was written are dropped and shown as
   `UNKNOWN_BIT_<n>`.

@@ -34,6 +34,7 @@ support promise. Per-version notes: [upgrade.md](upgrade.md).
 | Direct messages (two to ten members), blocking and reports, saved messages, forwarding, thread follow, search filters v2, built-in slash commands, reading a Talk's chat without joining | Supported (surfaces introduced in 1.1) |
 | 1.2 surfaces: Talk lobbies and temporary Talks, Stages with talk power/raised hands/reactions, forum channels, community events incl. past events, Discord structure import with undo, automod, moderation history/notes, view as role, sessions + inactivity sign-out, operator status page, reminders/scheduled messages, anonymous polls, auto-delete, search filters v3 with phrases/-term, notification levels v2, DM list v2 with favourites and mute-all, speaking URLs, emoji shortcodes | Supported (new in 1.2, released 2026-10-26; covered by automated backend and web tests and database migrations 0059–0076) |
 | 2.x surfaces: the built-in TURN relay (2.0), the setup assistant and the guided first run with *Test my connection* (2.2), several attachments per message and the reworked forum with tag colours, rules and solved posts (2.2), the community icon and Talks started from a direct message (2.2), taking over a call from another device (2.2), camera layers with a per-viewer camera cap and an optional voice upload limit (2.5, 2.6), raid protection, the vanity invite link and self-assignable roles (2.7), event roles with a waitlist, event comments and recurring events (2.8), the wiki with pages, revisions, locks, restore, pictures and search (2.9) | Supported (new in 2.x, released 2026-10-29 to 2026-11-04; covered by automated backend, web and end-to-end tests and database migrations 0077–0091) |
+| 3.x surfaces: bots added from a manifest with per-channel permissions, buttons, selects and forms on bot messages with interactions (3.1), access to every channel in one step for a bot, messages with a lifetime (timed messages), auto-delete in hours, days or weeks for attachments only or everything with a community default and a dry run, a placeholder for a removed file (3.2), member invites and inviting into a channel from its menu, commands restricted by the member's permissions, bots downloading attachments of messages they can see, the vanity link's single *Link active* switch (3.3). The official bot SDKs live in their own repositories ([bot-sdk-js](https://github.com/mnema-xyz/bot-sdk-js), [bot-sdk-go](https://github.com/mnema-xyz/bot-sdk-go)) | Supported (new in 3.x, released 2026-11-13 to 2026-11-15; covered by automated backend, web and end-to-end tests and database migrations 0105–0110) |
 | Browser app on WebKit (Safari, iOS, installed iOS web apps) and Firefox: text chat, search, voice, cameras and screen share with sealed media, as tested in [Browsers](#browsers) | Supported for text chat, search and administration. Sealed calls pass on macOS WebKit locally; the CI WebKit job cannot run them because Playwright's Linux WebKit build has no encoded-media API (`RTCRtpScriptTransform`); see the limits there (not yet tested on real iOS or Android hardware). WebKit occasionally refuses to clone the media key message (`web/src/lib/media/guard.ts` retries once; if the retry fails the line stays keyless until the next key, the call no longer aborts; seen on macOS WebKit CI runners, not verified on real Safari devices). |
 | Operations: Prometheus metrics and [alert rules](../deploy/monitoring/mnema-alerts.yml), operator status page, backup and restore, upgrade tested from 0.8.16, 0.9.0, 1.0.0, 1.1.0, 2.0.0, 2.9.12, 2.9.19, 3.0.13, 3.2.1 and 3.3.5, cosign-signed images, self-update that verifies the image's signature and provenance before it restarts the app | Supported |
 | Native mobile apps, text end-to-end encryption | Not offered. Text stays readable by the server, by design. The browser app has a phone layout (channel list as a drawer, full-screen thread and member list, 44 px touch targets, safe areas) that is covered by the `mobile-*` e2e projects in Chromium and WebKit device emulation, not by tests on real phones (no real iOS/Android hardware qualification). |
@@ -99,8 +100,10 @@ Other capabilities on this path, each with automated tests:
 
 Not covered by these tests: real 4K/60 capture, system audio from physical
 hardware, an external security audit and capacity beyond the recorded runs.
-Internal security reviews preceded 1.0 and 1.2; the 2.x line has no security
-review of its own in SECURITY.md, and none is an independent audit.
+Internal security reviews preceded 1.0 and 1.2; the 3.0.x patches came out of
+an internal defect hunt in November 2026 (its open items are listed under
+[known open defects](../SECURITY.md#known-open-defects)). None is an
+independent audit.
 
 ## Browsers
 
@@ -149,7 +152,7 @@ What it took:
   `RTCRtpScriptTransform` is missing, so a build that gains it runs the call
   again. Every spec that joins a call (calls, screen share, Talk chat, roles
   rights) stays out of `e2e (webkit 1/2)` and `e2e (webkit 2/2)` and runs in
-  four short `e2e (webkit-macos-calls, <group>)` jobs on macOS runners, not a required check.
+  six short `e2e (webkit-macos-calls, <group>)` jobs on macOS runners, not a required check.
 - **WebKit 27.2, `<select>` and the style policy.** Playwright's WebKit since 1.64
   (27.2) reports one `style-src-attr` violation for every `<select>` a page
   builds (empty sample, the script that created the select as source; the
@@ -175,7 +178,7 @@ What it took:
 
 Stability: Chromium passed every spec on every run. Firefox passed the
 whole suite apart from the specs that need Chrome's DevTools protocol, and its
-CI subset (7 files) 10 of 10. WebKit passed the suite apart from those too,
+CI subset (7 files at the time) 10 of 10. WebKit passed the suite apart from those too,
 but with one or two timing failures per full run on a loaded machine (a sealed
 call taking longer than the spec waits to re-key after a reload, a simulcast
 layer not up in time, a voice-chat leave); each passes when run alone. They are

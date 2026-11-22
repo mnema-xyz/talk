@@ -15,7 +15,7 @@ checks the required settings at startup and, if any is missing or still a
 placeholder, logs "Mnema Talk cannot start - fix these settings in .env:" with
 the complete list and exits with status 78 (a refused configuration, not a
 crash). `mnema-talk setup --check` prints the same list for the `.env` in a
-folder before you start (`docker run --rm -v "$PWD:/out" ghcr.io/mnema-xyz/mnema-talk setup --check`).
+folder before you start (`docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/out" ghcr.io/mnema-xyz/mnema-talk setup --check`).
 A missing `ADMIN_INITIAL_PASSWORD` is reported separately, when the first start
 tries to create the Owner.
 
@@ -1116,8 +1116,9 @@ updater`) has the reason. Details and limits are in
   `MNEMA_IMAGE=msch128/mnema-talk:latest` stays on Docker Hub. It trusts two
   origins, the release workflow of `github.com/mnema-xyz/talk` (the
   repository's name in the organization; the image keeps `mnema-talk`) and, for
-  releases from before the move, that of `github.com/mnema-xyz/talk`; the
-  signature and the provenance must come from the same origin. Any other
+  releases from before the move (up to 3.2.1), that of
+  `github.com/msch128/mnema-talk`; the signature and the provenance must come
+  from the same origin. Any other
   namespace or identity is refused. With `UPDATER_IMAGE_REPOSITORY` set, only
   that repository is trusted; with `UPDATER_CERT_IDENTITY_REGEXP` or
   `UPDATER_SOURCE_URL` set, only that one origin.
@@ -1183,7 +1184,7 @@ committed statement and public key.
   the optional features this build has, so a newer web app can hide what an
   older server lacks. In 1.1 it holds `blocks`, `dm`, `reports`, `saved`,
   `forward`, `search.filters.v2`, `threads.follow`, `slash.builtins`, `profile.banner` and `profile.avatar_remove`;
-  1.2 adds `search.filters.v3`, `talks.lobby`, `status.expiry`, `reminders`, `messages.scheduled`, `polls.anonymous`, `channels.auto_delete`, `automod`, `moderation.history`, `ops.status`, `import.discord`, `talks.stage`, `talks.reactions`, `channels.forum`, `events`, `notify.levels.v2` and `dm.v2`; later releases add `events.roles`, `events.recurrence`, `wiki`, `messages.nonce` and `reports.open_count`;
+  1.2 adds `search.filters.v3`, `talks.lobby`, `status.expiry`, `reminders`, `messages.scheduled`, `polls.anonymous`, `channels.auto_delete`, `automod`, `moderation.history`, `ops.status`, `import.discord`, `talks.stage`, `talks.reactions`, `channels.forum`, `events`, `notify.levels.v2` and `dm.v2`; later releases add `events.roles`, `events.recurrence`, `wiki`, `messages.nonce`, `reports.open_count`, `messages.lifetime`, `channels.auto_delete.v2` and `invites.member`;
   names never change meaning ([api-stability.md](api-stability.md)). A 1.0.x
   server sends no list. Storage is checked live, with one `HEAD` on the bucket
   at most every 10 s; it counts as down after two failed probes in a row, so a
@@ -1582,7 +1583,7 @@ Counters only go up (use `rate()` or `increase()`); gauges are current values.
 | `mnema_http_requests_total{route,class}` | counter | Requests by chi route pattern (`/api/channels/{channelID}/messages`) and status class `1xx`..`5xx`. Unknown paths are `unmatched`. |
 | `mnema_http_request_duration_seconds{route}` | histogram | Latency per route pattern (WebSocket upgrades are counted but not timed). |
 | `mnema_http_requests_in_flight` | gauge | Requests being served now. |
-| `mnema_ratelimit_hits_total{limiter}` | counter | Requests refused with 429, by limiter: `api_user` (600 a minute per member for requests that change something), `api_user_read` (3000 a minute per member for GET, HEAD and OPTIONS; reads have their own budget so browsing never uses up what a member may post), `upload`, `link_preview`, `poll_create` (10 a minute), `poll_vote`, `pin` (60 pins or unpins a minute), `emoji_upload` (10 per 10 minutes), `edit_history`, `export_download`, `dm_start` (new conversations), `block`, `report`, `saved`, `forward`, `thread_follow`, `slash_nick`, `test_mail`, `wiki`, `talk`, `talk_create`, `event_comment`, `later_change`, `self_roles`, `discord_import`, `connection_probe`, `speed_test`, the bot, webhook, gateway, push, e-mail and password-reset limiters, `ws_user` and `ws_ip`, and `other` for the few without a name. |
+| `mnema_ratelimit_hits_total{limiter}` | counter | Requests refused with 429, by limiter: `api_user` (600 a minute per member for requests that change something), `api_user_read` (3000 a minute per member for GET, HEAD and OPTIONS; reads have their own budget so browsing never uses up what a member may post), `upload`, `link_preview`, `poll_create` (10 a minute), `poll_vote`, `pin` (60 pins or unpins a minute), `emoji_upload` (10 per 10 minutes), `edit_history`, `export_download`, `dm_start` (new conversations), `block`, `report`, `saved`, `forward`, `thread_follow`, `slash_nick`, `test_mail`, `wiki`, `talk`, `talk_create`, `event_comment`, `later_change`, `self_roles`, `discord_import`, `connection_probe`, `speed_test` and `speed_test_ip`, `auth_options`, the bot, webhook, gateway, push, e-mail, password-reset, invite-preview and community-icon limiters, `ws_user`, `ws_ip` and `ws_report`, and `other` for the few without a name. |
 | `mnema_ws_online_users`, `mnema_ws_connections` | gauge | Distinct online users and open WebSockets. |
 | `mnema_ws_connections_total` | counter | Accepted realtime connections (reconnect churn). |
 | `mnema_ws_events_sent_total`, `mnema_ws_events_received_total` | counter | Event throughput to and from clients. |
@@ -1615,7 +1616,7 @@ Counters only go up (use `rate()` or `increase()`); gauges are current values.
 | `mnema_s3_operations_total{op,result}` | counter | Object storage calls (`upload`, `get`, `delete`, `list`) by `ok`/`error`. |
 | `mnema_webhook_events_dropped_total{reason}` | counter | Outgoing webhook events dropped or expired unsent: `webhook_cap` and `global_cap` (queue limits), `buffer_full`, `channel_share` and `store_error` (only `VOICE_STATE_UPDATE` passes the in-memory buffer; message and reaction events are written with their change), `expired` (older than the retry window), `message_ended` (the creation or edit of a message whose lifetime ended before it went out) and `private_channel` (an event queued for a webhook of a conversation or its call Talk, which only an edited database holds; dropped, never sent). A rising count means a receiver is down or too slow. |
 | `mnema_push_deliveries_total{outcome}` | counter | Web Push deliveries: `ok`, `gone` (the browser ended the subscription; it is removed), `retry` (temporary refusal, retried once), `rejected`, `error` (no answer: blocked address, DNS, connection, TLS, timeout) and `dropped` (a full queue). A rising `rejected` share right after a restore means the VAPID key changed. |
-| `mnema_job_duration_seconds{job}` | histogram | How long one run of a periodic maintenance job took. `job` is `session_sweep`, `status_expiry`, `ban_expiry`, `unlock`, `export_sweep`, `slow_mode_prune`, `edit_history`, `auto_delete`, `poll_fold`, `later`, `audit_retention`, `community_events`, `push_sweep` or `avatar_reencode`. |
+| `mnema_job_duration_seconds{job}` | histogram | How long one run of a periodic maintenance job took. `job` is `session_sweep`, `status_expiry`, `ban_expiry`, `unlock`, `export_sweep`, `slow_mode_prune`, `edit_history`, `auto_delete`, `message_expiry`, `poll_fold`, `later`, `audit_retention`, `community_events`, `push_sweep` or `avatar_reencode`. |
 | `mnema_job_errors_total{job}` | counter | Runs of those jobs that returned an error. Stopping the process is not counted. |
 | `mnema_job_panics_total{job}` | counter | Runs that panicked. The panic is logged and the job keeps its schedule; it is not also counted as an error. |
 | `mnema_goroutine_panics_total{name}` | counter | Panics outside an HTTP request and outside those jobs: on a goroutine, timer or callback of the server. `name` is the fixed name of the place in the code (`ws_read`, `sfu_forward`, ...). It is logged as `goroutine panicked` with a stack. Work that belongs to one connection or one call participant closes only that connection or removes only that participant, and the server carries on; a panic in a process-wide loop ends the process after the log line, and the container restarts it. A place that panics over and over is counted every time but logged only five times a minute. Fatal runtime errors (concurrent map writes, a stack overflow, out of memory) cannot be recovered and still end the process without this count. Timers that belong to one member are recovered where that is safe: the end of a Talk seat after its grace time (`ws_voice_grace`; the seat is removed before any listener runs, and if the panic came earlier the removal is tried once more) and the delayed write of voice time (`ws_voice_time`; the seconds are put back for the next write). One timer still ends the process when it panics, because it fans out to several parties and nothing records who was already told: the announcement that a new member's wait has ended (`perm_wait_end`), like `perm_changed`, which enforces a permission change. The enforcement on live connections (`ws_perm_enforce`) fails closed: a panic in it, on a request or a timer, is counted and logged, and the members concerned (everybody when the set is unknown) are disconnected and removed from their Talks one by one, so they are checked again when they reconnect and a panic for one member does not spare the others. A panic inside that clean-up itself is not recovered by the hub: on a timer it ends the process, on a request the HTTP layer answers a 500 and the process lives, with the change already saved. The same holds for a panic in the clean-up that runs after a recovered panic. Goroutines that the WebRTC library (Pion) starts itself, such as its interceptors for sender reports, transport-wide feedback and NACK generation, run outside any recovery of ours and end the process if they panic; only the RTP writer of a call viewer is guarded (`sfu_viewer_write`), and that cannot be fixed in this code. Any value above 0 is a bug worth reporting. |
@@ -1872,7 +1873,7 @@ repeats at that pace until the settings are right. The server deliberately
 serves no "error page" meanwhile: a half-started process would be an
 unauthenticated surface and every health check would have to special-case it.
 Check an `.env` without starting anything with
-`docker run --rm -v "$PWD:/out" ghcr.io/mnema-xyz/mnema-talk setup --check --dir /out`
+`docker run --rm --user "$(id -u):$(id -g)" -v "$PWD:/out" ghcr.io/mnema-xyz/mnema-talk setup --check`
 (or `mnema-talk setup --check`). Other messages here: `TRUSTED_PROXY_CIDRS
 contains an invalid entry`, or a migration failure (see [upgrade.md](upgrade.md)).
 `mnema-talk doctor` prints the same block when the settings are wrong.

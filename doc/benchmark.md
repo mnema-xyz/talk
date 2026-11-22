@@ -388,6 +388,7 @@ thumbnail layer is not exercised; "4 watched" shows only the first four cameras
 grid shows four tiles receives with the visible-cameras behaviour.
 
 | Shape | Members | 2.4.0 CPU | 2.5.0 CPU | 2.4.0 heap MB | 2.5.0 heap MB | 2.4.0 worst loss | 2.5.0 worst loss | 2.5.0 generator CPU |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
 | 4 cameras @ 300 kbit/s | 25 | 0.37 | 0.35 | 378 | 82 | 0.0 % | 0.0 % | 0.33 |
 | 4 cameras @ 1000 kbit/s | 25 | 0.55 | 0.54 | 377 | 246 | 0.0 % | 0.0 % | 0.51 |
 | 10 cameras @ 300 kbit/s | 25 | 0.58 | 0.55 | 711 | 168 | 0.0 % | 0.0 % | 0.52 |

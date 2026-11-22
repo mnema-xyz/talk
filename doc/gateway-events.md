@@ -6,16 +6,16 @@ examples show `d` only. Ids are UUIDs, times are RFC 3339 in UTC.
 
 The shapes come from the server's own types: the message is the one the REST API
 returns (`api/openapi.json`, tag *Bot API*), and the other payloads are the Go
-types in `internal/gateway`. They are named in
-[`src/types/gateway.ts` of the TypeScript SDK](https://github.com/mnema-xyz/bot-sdk-js/blob/main/src/types/gateway.ts),
-and the Go SDK in [`types.go` of the Go SDK](https://github.com/mnema-xyz/bot-sdk-go/blob/main/types.go).
+types in `internal/gateway`. The SDKs name them in
+[`src/types/gateway.ts` of the TypeScript SDK](https://github.com/mnema-xyz/bot-sdk-js/blob/main/src/types/gateway.ts)
+and in [`types.go` of the Go SDK](https://github.com/mnema-xyz/bot-sdk-go/blob/main/types.go).
 
 | Event | Intent | Sent when |
 |---|---|---|
 | [`READY`](#ready) | none | the session started (IDENTIFY accepted); always the first dispatch |
 | [`RESUMED`](#resumed) | none | a RESUME succeeded and the missed events were replayed |
 | [`MESSAGE_CREATE`](#message_create-and-message_update) | `GUILD_MESSAGES` (512) | a message was posted in a channel the bot can view, the bot's own included |
-| [`MESSAGE_UPDATE`](#message_create-and-message_update) | `GUILD_MESSAGES` | a message changed: an edit, a pin or unpin, a change to a forum post |
+| [`MESSAGE_UPDATE`](#message_create-and-message_update) | `GUILD_MESSAGES` | a message changed: an edit, a pin or unpin, a change to a forum post, a file of it removed (then `is_deleted`) |
 | [`MESSAGE_DELETE`](#message_delete) | `GUILD_MESSAGES` | a message was deleted |
 | [`MESSAGE_REACTIONS_UPDATE`](#message_reactions_update) | `GUILD_MESSAGE_REACTIONS` (1024) | a reaction was added or removed |
 | [`CHANNELS_UPDATE`](#channels_update) | `GUILDS` (1) | the channel layout, or what the bot may see of it, changed |
@@ -34,7 +34,7 @@ bot cannot view is never sent, and the check runs when the event is sent.
     "id": "00000000-0000-4000-8000-000000000030",
     "bot_id": "00000000-0000-4000-8000-000000000031",
     "username": "Dice",
-    "handle": "bot-dice",
+    "handle": "dice",
     "bot": true,
     "avatar_url": "/api/media/..."
   },
@@ -49,7 +49,8 @@ bot cannot view is never sent, and the check runs when the event is sent.
 appears in a message's `mentions` when someone mentions the bot. `user.bot_id`
 is the id of the bot record (the `application_id` of its interactions).
 `username` is the name members see, `handle` the unique name they mention
-(`@bot-...`); `avatar_url` is absent without an avatar. `intents` are the intents
+(`@dice`, derived from the bot's name when it was created; see
+[mentions](bots.md#members-presence-and-the-bot-role)); `avatar_url` is absent without an avatar. `intents` are the intents
 granted, `v` the gateway version.
 
 ## RESUMED
@@ -73,7 +74,7 @@ use one of its own.
   "user_id": "00000000-0000-4000-8000-000000000020",
   "username": "mara",
   "display_name": "Mara",
-  "content": "!ping @bot-dice",
+  "content": "!ping @dice",
   "is_pinned": false,
   "is_edited": false,
   "reply_count": 0,
@@ -98,7 +99,7 @@ use one of its own.
 | `is_pinned`, `pinned_at`, `pinned_by` | pin state; the other two are absent on an unpinned message |
 | `is_edited`, `created_at`, `updated_at` | edit state and times |
 | `reply_count` | replies in the thread of this message |
-| `attachments` | `id`, `original_filename`, `mime_type`, `size_bytes`, `url` (`/api/media/{id}`), `is_deleted` |
+| `attachments` | `id`, `original_filename`, `mime_type`, `size_bytes`, `url` (`/api/bot/v1/media/{id}`, see [downloading attachments](bots.md#downloading-attachments)), `is_deleted`; messages read over REST also carry Discord's `filename`, `content_type` and `size` |
 | `reactions` | `emoji`, `count`, `users` (member ids) |
 | `mentions` | the members notified by this message, including the bot when it was mentioned (see [allowed mentions](allowed-mentions.md)) |
 | `direct_mentions` | the members of `mentions` that are addressed by name or through a role, not only by `@all` or `@here` |

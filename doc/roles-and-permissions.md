@@ -136,7 +136,7 @@ the own role is a convenient place for "this bot may post in #alerts").
 | Send direct messages | Start direct messages and write in them; reading one you are in never needs it. On for @everyone (migration 0050 adds it to existing databases); a timeout takes it, an administrator can withhold it from new members or onboarding roles (bit `1 << 22`) | no |
 | Manage reports | Read and close member reports of messages, with the copy and context they kept (bit `1 << 21`, [moderation](moderation.md#blocking-and-reports)). Off for @everyone. Granted to the seeded Moderator and Admin by migration 0097; Administrators and the Owner have it implicitly | no |
 | Kick members | Sign members below your highest role out everywhere and drop them from their Talk, with no lasting sanction (bit `1 << 23`, [moderation](moderation.md#kicks)). Off for @everyone. Granted to the seeded Moderator and Admin by migration 0097; Administrators and the Owner have it implicitly | no |
-| Manage stage | Give and take talk power in a Stage and answer raised hands; holders can always speak there (bit `1 << 24`, [Talks](talks.md#stages)). Off for @everyone. Granted to the seeded Moderator and Admin by migration 0097; Administrators and the Owner have it implicitly. It is channel-scoped, so it can be allowed for one Stage only | yes |
+| Manage stage | Give and take talk power in a Stage and answer raised hands; holders can always speak there (bit `1 << 24`, [Talks](talks.md#stages)). Off for @everyone and not given to the seeded Moderator and Admin by any migration: Administrators and the Owner have it implicitly, everyone else needs it granted. It is channel-scoped, so it can be allowed for one Stage only | yes |
 | Manage events | Create, edit and cancel community events, and upload or remove their cover images (bit `1 << 25`, [events](events.md)). Granted to roles holding *Timeout members* (seeded Moderator and Admin) by migration 0070; Administrators and the Owner have it implicitly | no |
 | Bypass new member limits | Write, react and speak at once, without waiting out the minimum membership age of [raid protection](moderation.md#raid-protection) (bit `1 << 26`). Separate from the slow mode exemption, which *Manage messages* gives. Granted to roles holding *Timeout members* (seeded Moderator and Admin) by migration 0083; Administrators and the Owner have it implicitly | no |
 | Edit the wiki | Create and edit [wiki](wiki.md) pages and restore earlier revisions (bit `1 << 27`). Off for @everyone. Granted to roles holding *Timeout members* by migration 0089; Administrators and the Owner have it implicitly. A timeout and the new-member wait of raid protection take it away like *Send messages*. Never allowed for a self-assignable role | no |
@@ -153,9 +153,9 @@ role either: it is the one account with `users.role = 'admin'`.
 
 | Who | What it is | Permissions |
 |---|---|---|
-| Member | `@everyone` (position 0, every member has it) | *View channels, Send messages, Attach files, Add reactions, Mention @all and @here, Connect, Speak, Video, Send direct messages, View the wiki* (`perm.DefaultEveryone`) |
+| Member | `@everyone` (position 0, every member has it) | *View channels, Send messages, Attach files, Add reactions, Mention @all and @here, Connect, Speak, Video, Send direct messages, View the wiki, Create invites* (`perm.DefaultEveryone`; *Create invites* only on a fresh install, migration 0109) |
 | Moderator | Seeded role, hoisted, not managed, not mentionable | *Manage messages, Disconnect members, Timeout members, View audit log, Manage events, Bypass new member limits, Edit the wiki, Manage the wiki, Manage reports, Kick members* |
-| Admin | Seeded role, hoisted, not managed, not mentionable, above Moderator when both are new | Moderator's permissions, plus *Manage channels, Manage roles, Manage invites, Manage members, Ban members* |
+| Admin | Seeded role, hoisted, not managed, not mentionable, above Moderator when both are new | Moderator's permissions, plus *Manage channels, Manage roles, Manage invites, Create invites, Manage members, Ban members* (*Create invites* by migration 0109, for every role that holds *Manage invites*) |
 | Owner | The account `users.role = 'admin'`, not a role | Every permission, plus the Owner-only powers |
 
 Neither seeded role has *Administrator*, *Manage bots* or *Manage webhooks*.
@@ -196,7 +196,7 @@ The flag is only for harmless roles, and the server enforces it every time:
 - never `@everyone`, a managed role or a bot's role;
 - never a role with *Administrator*, any permission that opens the admin area
   (the same set the bot rules use), or a moderation power over others
-  (*Manage messages*, *Manage stage*, *Manage events*, *Bypass new member limits*, *Edit the wiki*, *Manage the wiki*). Turning the flag on for
+  (*Manage messages*, *Manage stage*, *Manage events*, *Bypass new member limits*, *Edit the wiki*, *Manage the wiki*, *Create invites*). Turning the flag on for
   such a role, or giving permissions like that to a flagged role, is refused with
   a clear sentence. If a flagged role somehow carries such a bit anyway, it is no
   longer listed and cannot be taken.
@@ -304,7 +304,7 @@ it is probed with a private channel or exempted with a reason.
 
 ## View the server as a role
 
-In *Admin* > *Roles*, **View server as <role>** opens a read-only preview of the
+In *Admin* > *Roles*, **View community as <role>** opens a read-only preview of the
 sidebar for a made-up member who holds only @everyone and that role. It shows
 the categories and channels that member can see, marks every Talk *can join* or
 *can't join*, and lists, for the channel you select, which channel permissions
@@ -366,7 +366,7 @@ While rules exist, a member who has not accepted the current version
 (`rules_pending` in `GET /api/permissions`, `GET /api/auth/me` and
 `GET /api/onboarding`) loses what a timeout takes: *Send messages*, *Attach
 files*, *Add reactions*, *Mention @all and @here*, *Connect*, *Speak*, *Video*,
-*Send direct messages*, *Edit the wiki* and *Manage the wiki*. They keep reading. It is not a permission anyone can grant or deny: it comes
+*Send direct messages*, *Edit the wiki*, *Manage the wiki* and *Create invites*. They keep reading. It is not a permission anyone can grant or deny: it comes
 from the same snapshot as a timeout, so REST, the WebSocket hub and the SFU all
 agree, and writes answer `403 RULES_NOT_ACCEPTED` (a Talk join answers
 `voice_kicked` with reason `rules_not_accepted`). `POST /api/onboarding/accept`
@@ -375,8 +375,8 @@ with the current `version` lifts it at once.
 - The Owner and bots are exempt. Empty rules enforce nothing, so existing
   installs and clearing the rules never lock anyone out.
 - The first rules written start at version 1 and every existing member has to
-  accept them. Later edits keep acceptances unless the Owner ticks *require
-  re-acceptance*, which raises the version.
+  accept them. Later edits keep acceptances unless the Owner ticks *Require
+  everyone to accept the rules again*, which raises the version.
 - A member the server has not seen yet counts as not having accepted (the check
   fails closed).
 - `GET /api/invites/{code}` is public and rate limited per IP; it answers only

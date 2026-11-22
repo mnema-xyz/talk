@@ -58,7 +58,7 @@ Every event has a flat discussion under it (no replies).
 
 ## Recurring events
 
-An event can repeat every week, every two weeks or every month. The first event is created as usual, with a `recurrence` (`frequency`, the IANA time `zone` of the person who sets it up, an optional `until`); it is the first **occurrence** of a **series**. Occurrences are ordinary events (reminders, RSVPs, roles, comments, the audit log all work as before), each marked with its series (`series.index`, `series.frequency`, `series.ended`).
+An event can repeat every week, every two weeks or every month. The first event is created as usual, with a `recurrence` (`frequency`: `weekly`, `biweekly` or `monthly`; `timezone`, the IANA time zone of the person who sets it up, UTC when omitted; an optional `until`); it is the first **occurrence** of a **series**. Occurrences are ordinary events (reminders, RSVPs, roles, comments, the audit log all work as before), each marked with its series (`series.index`, `series.frequency`, `series.ended`).
 
 - **Time rule**: every start is counted from the series' anchor (the first start, later the start set by an edit of the following events) in the series' time zone, so a 19:00 event stays at 19:00 across the change to or from summer time. A monthly series keeps the day of the month and falls back to the last day of a shorter month (the 31st becomes the 28th), counted from the anchor, so a short month moves nothing after it.
 - **Creation**: the server creates the occurrences of the next 60 days when the series is made and then once every ten minutes as time passes. A series has at most 200 occurrences and none starts after `until`. Occurrences that would start in the past (after a long downtime) are skipped, not created late.
