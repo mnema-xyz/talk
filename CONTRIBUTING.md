@@ -18,7 +18,7 @@ and AI agents alike; this page is the short version.
 
 ## Development setup
 
-You need Go (see `go.mod`), Node and npm, Docker and GNU make.
+You need Go (see `go.mod`), Node 26 and npm, Python 3, Docker and GNU make.
 
 ```sh
 make install-hooks      # pre-commit: gitleaks + gofmt

@@ -49,15 +49,15 @@ the pinned tooling where needed. Vite transpiles TypeScript and does not replace
 execute. Real browser loading remains part of media verification.
 
 The existing generated/licensed DeepFilterNet JavaScript under
-`src/third_party/deepfilternet3` is the only source-language exception:
+`web/src/third_party/deepfilternet3` is the only source-language exception:
 `worker-glue.js` and `worklet.js` retain their provenance and license text.
 The active worker import has explicit `worker-glue.d.ts` declarations reviewed
 against those exports. The unused original worklet remains an upstream
 comparison artifact. This exception does not allow new first-party JavaScript.
 
 Compiler and lint dependencies are exact-pinned in `package.json` and locked.
-TypeScript 6.0.3 is compatible with the selected vue-tsc 3.3.13 and
-TypeScript-ESLint 8.72.0 peer ranges. The REST generator needs no new runtime
+TypeScript 6.0.3 is compatible with the selected vue-tsc 3.3.14 and
+TypeScript-ESLint 8.73.0 peer ranges. The REST generator needs no new runtime
 library. Upgrading tooling requires repeating type checks, lint, tests and the
 production build; remaining dependency advisories are reported separately from
 production dependency results.
@@ -74,7 +74,8 @@ Type-only modules and re-export barrels have no statement body to instrument.
 
 The file `web/coverage-policy.json` is an explicit per-file exception registry. Each
 exception must name a concrete limitation, its author and two
-distinct independent reviewers and set every metric's floor to at least 80%.
+distinct independent reviewers and set every metric's floor between 60% and
+80%, lowering at least one of them below the 80% module minimum.
 An exception cannot lower global thresholds, exclude code, or cover a wildcard.
 Exceptions that no longer apply fail the gate and must be removed. JSON and
 LCOV reports remain available when a coverage gate fails. The policy's review

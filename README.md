@@ -453,7 +453,7 @@ and the threat model: [doc/desktop-trusted-client.md](doc/desktop-trusted-client
 
 | Topic | Where |
 |---|---|
-| **Read first when updating:** what 1.0 promises and what to do before updating; the 1.1 and 1.2 changes are in the upgrade notes | [doc/release-notes-1.0.md](doc/release-notes-1.0.md), [doc/upgrade.md](doc/upgrade.md) |
+| **Read first when updating:** what 1.0 promises and what to do before updating; every later release is in the upgrade notes | [doc/release-notes-1.0.md](doc/release-notes-1.0.md), [doc/upgrade.md](doc/upgrade.md) |
 | Components, data flow, capacity | [doc/architecture.md](doc/architecture.md) |
 | Configuration, reverse proxy, TURN, backups, metrics and alerts, troubleshooting | [doc/operations.md](doc/operations.md) |
 | Quick start (setup assistant), platform notes (Synology, Unraid, VPS), HTTPS and reverse proxy | [doc/quick-start.md](doc/quick-start.md), [doc/platform-notes.md](doc/platform-notes.md), [doc/reverse-proxy.md](doc/reverse-proxy.md) |
@@ -484,7 +484,7 @@ and the threat model: [doc/desktop-trusted-client.md](doc/desktop-trusted-client
 
 ## Development
 
-Requirements: Go (see `go.mod`), Node and npm, Docker, GNU make. `make help`
+Requirements: Go (see `go.mod`), Node 26 and npm, Python 3, Docker, GNU make. `make help`
 lists every target.
 
 ```sh

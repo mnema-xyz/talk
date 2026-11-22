@@ -14,7 +14,7 @@ Forum channels reuse the existing thread model rather than maintaining a separat
   - A **solved** mark (`is_resolved`), a **lock** (`is_locked`) and the ordinary message **pin** (`is_pinned`).
 - **Replies** to a post form the thread (`messages.parent_id = post.id`), using standard thread routes and WebSocket events.
 - Creating a post automatically follows the post's thread for the creator, so they receive notifications for subsequent replies; anyone can follow or unfollow a post (`PUT` and `DELETE /api/threads/{threadID}/follow`).
-- A post can be created with its first file in one request: `POST /api/channels/{id}/upload` accepts `title` and `tag_ids` (comma-separated) next to the file, and applies the same rules as `POST /api/channels/{id}/posts`. A message carries one file, so the web app sends further files as the author's first replies.
+- A post can be created with its first file in one request: `POST /api/channels/{id}/upload` accepts `title` and `tag_ids` (comma-separated) next to the file, and applies the same rules as `POST /api/channels/{id}/posts`. This route carries one file and the post routes take no staged attachments, so the web app sends further files as the author’s first replies.
 - The author (unless the post is locked) and members with *Manage messages* edit the title (`PATCH /api/channels/{id}/posts/{postID}`), the tags and the solved mark. The first message is edited like any message. A post is deleted like any message (the author, or *Manage messages*); its replies go with it.
 - There is no automatic archiving: a post stays open until someone locks it. Lock and solved cover closing a discussion without a hidden state or a background job.
 

@@ -13,14 +13,12 @@ fails when a web dependency is missing from the in-app list.
 
 ## Web app (shipped to every browser)
 
-The experimental native desktop source checkpoint now lives in
+The desktop host lives in
 [talk-desktop](https://github.com/mnema-xyz/talk-desktop).
 Its dependency inventory is
-[experimental/THIRD_PARTY_NOTICES.md](https://github.com/mnema-xyz/talk-desktop/blob/main/experimental/THIRD_PARTY_NOTICES.md).
-Its locked Rust and UI graph includes the pinned OpenMLS and SFrame providers;
-the corresponding full license texts are preserved under
-`experimental/licenses/` in that repository. This source checkpoint is not a desktop
-binary release.
+[experimental/THIRD_PARTY_NOTICES.md](https://github.com/mnema-xyz/talk-desktop/blob/main/experimental/THIRD_PARTY_NOTICES.md),
+and the full license texts are preserved under `experimental/licenses/` in that
+repository (see [Desktop client](#desktop-client) below).
 
 | Component | Version | License |
 |---|---|---|
@@ -231,21 +229,24 @@ Vite, `@vitejs/plugin-vue`, Tailwind CSS tooling, [swag](https://github.com/swag
 used to build and test Mnema Talk. They are not part of the binary or the web
 app; see `web/package.json` (`devDependencies`) and `go.mod`.
 
-## Desktop feasibility probe
+## Desktop client
 
-The Windows-first probe additionally uses Tauri 2.12.1, its JavaScript API
-2.12.1, reqwest 0.12.28, serde 1.0.229, serde_json 1.0.151, url 2.5.8 and
-windows-sys 0.61.2 (MIT OR Apache-2.0). It reuses Vue under the MIT license.
-The locked Rust inventory, including optional platform and build dependencies,
-is in [THIRD_PARTY_NOTICES.md](https://github.com/mnema-xyz/talk-desktop/blob/main/THIRD_PARTY_NOTICES.md)
-in [talk-desktop](https://github.com/mnema-xyz/talk-desktop); the
-frontend lockfile is `ui/package-lock.json` there. This prototype is not
-an official desktop release. Distribution must include the applicable license
-texts; inventory generation alone is not redistribution compliance.
+The desktop client (Beta) lives in
+[talk-desktop](https://github.com/mnema-xyz/talk-desktop). Its Tauri host for
+Windows and macOS additionally uses Tauri 2.12.7, reqwest 0.13.5, serde
+1.0.229, serde_json 1.0.154, url 2.5.8 and windows-sys 0.61.2 (MIT OR
+Apache-2.0); the Linux client is built on Electron. The locked inventories,
+including optional platform and build dependencies, are in
+[THIRD_PARTY_NOTICES.md](https://github.com/mnema-xyz/talk-desktop/blob/main/THIRD_PARTY_NOTICES.md)
+and `linux/THIRD_PARTY_NOTICES.md` in that repository; `ui/package-lock.json`
+there pins only the Tauri CLI used to bundle the installer. Distribution must
+include the applicable license texts; inventory generation alone is not
+redistribution compliance.
 
-The desktop UI bundles unchanged Inter Latin 400/500/600 fonts from the existing
-@fontsource/inter 5.3.0 dependency (OFL-1.1). Full original attribution and license
-are included in `licenses/INTER-OFL.txt` in that repository and the distribution bundle.
+The desktop host bundles unchanged Inter Latin 400/500/600 fonts from the
+@fontsource/inter 5.3.0 dependency (OFL-1.1). Full original attribution and
+license are included in `experimental/licenses/INTER-OFL.txt` in that
+repository and the distribution bundle.
 
 The shared Vue client also bundles `@tauri-apps/api` 2.12.5 (MIT OR
 Apache-2.0) for the experimental desktop IPC adapter. Browser requests retain

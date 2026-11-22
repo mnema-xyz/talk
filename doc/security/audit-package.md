@@ -25,14 +25,14 @@ Contents:
 | Item | Value |
 |---|---|
 | Product | Mnema Talk, a self-hosted, invite-only chat and voice server for small communities |
-| Audit target | Release **1.2.0** (branch `release/1.2.0`; the tag is the reference once it exists) |
-| Previous releases | 1.1.0 (direct messages, blocks, reports, forwarding), 1.0.x (first stable line) |
+| Audit target | The latest release of the current line, **3.3.x** (at the time of writing v3.3.10); the tag is the reference |
+| Previous releases | 3.0 to 3.2 (bot platform with manifests and interactions, timed messages, finer auto-delete), 2.x (built-in TURN relay, wiki, events, raid protection), 1.2 (the large feature release described below), 1.1.0 (direct messages, blocks, reports, forwarding), 1.0.x (first stable line) |
 | Repository | <https://github.com/mnema-xyz/talk> (public, source available to the reviewers) |
-| Server | Go (module `go 1.27`), chi 5.5, pgx 5.11, Pion WebRTC 4.2, `golang.org/x/crypto`, `webpush-go` 1.4 |
+| Server | Go (module `go 1.27`), chi 5.5, pgx 5.13, Pion WebRTC 4.2, `golang.org/x/crypto`, `webpush-go` 1.4 |
 | Web app | Vue 3 single-page app (TypeScript), `ts-mls` 1.6.4 for MLS, Vite build, embedded in the server binary |
 | Data stores | PostgreSQL 18, S3-compatible object storage (SeaweedFS in the compose stack) |
 | Optional services | coturn (TURN), update sidecars (`updater`, `recreator`, off by default) |
-| Desktop client | Separate repository (<https://github.com/mnema-xyz/talk-desktop>, Tauri shell, **Beta**, installers unsigned at OS level) running a signed web bundle built from this repository |
+| Desktop client | Separate repository (<https://github.com/mnema-xyz/talk-desktop>, a Tauri shell on Windows and macOS and an Electron client on Linux, **Beta**, installers unsigned at OS level) running a signed web bundle built from this repository |
 
 **In scope:** the server (`cmd/server`, `internal/`), the web app (`web/`),
 the signed web bundle format and its verification (`internal/webbundle`,
@@ -46,7 +46,7 @@ third-party services (push services, GitHub, GIF provider), the operator's
 reverse proxy and host, social engineering of the Owner, and denial of service
 by resource exhaustion on an instance you do not operate.
 
-New in 1.2 (the diff since 1.1.0 is the freshest, least-reviewed code): Create-a-Talk
+New in 1.2 (the last release with an internal review of its own diff, section 7.3): Create-a-Talk
 lobbies and temporary Talks with leaders, Stages (talk power, raise hand),
 community events with RSVPs and reminders, status expiry, reminders, scheduled
 send, anonymous polls, slow-mode presets, per-channel auto-delete, forum
@@ -87,7 +87,7 @@ forwarding unit (SFU) and the embedded web app. Component list:
 | Media E2EE | Inside the RTP payload, in the browser | MLS-derived AES-128-GCM key, Ed25519 signature per frame, replay window | Ciphertext and codec headers (authenticated, readable) |
 | MLS handshake | Over the WebSocket as opaque messages | MLS signatures; server checks only framing and size | Key packages, welcomes, commits (public), who sent them |
 | Web Push | Server to browser vendor push service | RFC 8291 encryption, VAPID; endpoint guarded by the SSRF resolver | Subscription endpoints and push contents before encryption |
-| Storage | App to S3 API; media only through the app, never direct | Content sniffing, avatar/banner/emoji re-encode, per-account quotas; access check on every download | Plain files (attachments are stored as uploaded) |
+| Storage | App to S3 API; media only through the app, never direct | Content sniffing, avatar/banner/emoji re-encode, metadata of JPEG/PNG/WebP attachments removed (Owner switch, on by default), per-account quotas; access check on every download | Plain files (other attachments are stored as uploaded) |
 | Outbound | Webhooks, link previews, update check, push | `internal/ssrf` resolve-vet-connect guard, no redirects, size caps | Targets chosen by members or admins |
 | Desktop shell | Tauri app to the instance through its own proxy | Signed web bundle (Ed25519, pinned key, security floor), session cookie kept out of the page, strict CSP | Same as a browser |
 | Update sidecar | Admin console to `updater` to `recreator` | Off by default, shared token, cosign signature and provenance check of the new image | n/a |
@@ -220,7 +220,7 @@ serves modified web app code. This is the documented boundary, not a bug: see
 | Component | Design |
 |---|---|
 | Web bundle signing | Ed25519 over the bundle manifest; key pinned in the desktop client; offline root key can revoke a leaked CI key; security floor refuses older bundles ([desktop trust model](../desktop-trusted-client.md)) |
-| Desktop self-update | Tauri updater, minisign signature against a pinned key distinct from the bundle key, HTTPS from github.com |
+| Desktop self-update | Tauri updater (the Electron client for Linux applies the same rules), minisign signature against a pinned key distinct from the bundle key, HTTPS from github.com |
 | Release images | cosign signature and SLSA provenance, verified by the update sidecar against the pinned workflow identity before anything is pulled |
 | Outgoing webhooks | HMAC-SHA256 over `t.body`, secret stored separately from the queue |
 | Web Push | RFC 8291 `aes128gcm`, VAPID (RFC 8292), private key in the database |
@@ -250,10 +250,10 @@ permission check on the channel.
 
 ### REST routes
 
-320 operations on 253 paths, grouped by API tag.
+340 operations on 269 paths, grouped by API tag.
 
 
-#### Admin (54)
+#### Admin (61)
 
 | Method | Path | Authentication | Summary |
 |---|---|---|---|
@@ -266,6 +266,7 @@ permission check on the channel.
 | PATCH | `/api/admin/channels/{id}` | Session + admin-area permission | Rename a channel, change its topic or member limit |
 | DELETE | `/api/admin/channels/{id}` | Session + admin-area permission | Delete a channel |
 | PUT | `/api/admin/channels/{id}/auto-delete` | Session + admin-area permission | Set a channel's auto-delete |
+| POST | `/api/admin/channels/{id}/auto-delete/preview` | Session + admin-area permission | Preview a channel's auto-delete |
 | POST | `/api/admin/channels/{id}/duplicate` | Session + admin-area permission | Duplicate a channel |
 | POST | `/api/admin/import/discord/apply` | Session + admin-area permission | Import a Discord server structure |
 | GET | `/api/admin/import/discord/imports` | Session + admin-area permission | List Discord imports |
@@ -274,6 +275,8 @@ permission check on the channel.
 | POST | `/api/admin/import/discord/preview` | Session + admin-area permission | Preview a Discord server import |
 | GET | `/api/admin/invites` | Session + admin-area permission | List invites |
 | POST | `/api/admin/invites` | Session + admin-area permission | Create an invite |
+| GET | `/api/admin/invites/limits` | Session + admin-area permission | Read the limits of member invites |
+| PUT | `/api/admin/invites/limits` | Session + admin-area permission | Set the limits of member invites |
 | PATCH | `/api/admin/invites/{id}` | Session + admin-area permission | Change an invite's expiry or use limit |
 | DELETE | `/api/admin/invites/{id}` | Session + admin-area permission | Delete an invite |
 | PUT | `/api/admin/layout` | Session + admin-area permission | Apply category order and channel placement |
@@ -283,6 +286,10 @@ permission check on the channel.
 | POST | `/api/admin/media/prune` | Session + admin-area permission | Delete old chat attachments |
 | GET | `/api/admin/media/stats` | Session + admin-area permission | Storage totals |
 | DELETE | `/api/admin/media/{id}` | Session + admin-area permission | Delete a media object |
+| GET | `/api/admin/message-settings` | Session + admin-area permission | Message settings |
+| PUT | `/api/admin/message-settings/auto-delete` | Session + admin-area permission | Set the auto-delete default |
+| POST | `/api/admin/message-settings/auto-delete/preview` | Session + admin-area permission | Preview the auto-delete default |
+| PUT | `/api/admin/message-settings/lifetimes` | Session + admin-area permission | Set the lifetime settings |
 | GET | `/api/admin/status` | Session + admin-area permission | Operator status |
 | GET | `/api/admin/status/capacity` | Session + admin-area permission | Server capacity |
 | POST | `/api/admin/status/websocket` | Session + admin-area permission | Report the admin's WebSocket |
@@ -333,7 +340,7 @@ permission check on the channel.
 | GET | `/api/invites/{code}` | None (public) | Preview an invite |
 | GET | `/api/join/{slug}` | None (public) | Preview a vanity invite link |
 
-#### Bot API (19)
+#### Bot API (22)
 
 | Method | Path | Authentication | Summary |
 |---|---|---|---|
@@ -353,20 +360,26 @@ permission check on the channel.
 | GET | `/api/bot/v1/gateway` | Bot token | Get the gateway address |
 | POST | `/api/bot/v1/interactions/{interactionID}/{token}/callback` | Bot token | Respond to an interaction |
 | POST | `/api/bot/v1/interactions/{interactionID}/{token}/followups` | Bot token | Send a follow-up to an interaction |
+| PATCH | `/api/bot/v1/interactions/{interactionID}/{token}/messages/@original` | Bot token | Edit the original response |
+| DELETE | `/api/bot/v1/interactions/{interactionID}/{token}/messages/@original` | Bot token | Delete the original response |
+| GET | `/api/bot/v1/media/{id}` | Bot token | Download an attachment |
 | GET | `/api/bot/v1/members` | Bot token | List members |
 | GET | `/api/bot/v1/members/{userID}` | Bot token | Get a member |
 | GET | `/api/bot/v1/users/@me` | Bot token | Get the bot itself |
 
-#### Bots (15)
+#### Bots (18)
 
 | Method | Path | Authentication | Summary |
 |---|---|---|---|
 | GET | `/api/admin/bots` | Session + admin-area permission | List bots |
 | POST | `/api/admin/bots` | Session + admin-area permission | Create a bot |
+| POST | `/api/admin/bots/install` | Session + admin-area permission | Add a bot from a manifest |
+| POST | `/api/admin/bots/manifests/check` | Session + admin-area permission | Check a bot manifest |
 | GET | `/api/admin/bots/{id}` | Session + admin-area permission | Get a bot |
 | PATCH | `/api/admin/bots/{id}` | Session + admin-area permission | Change a bot |
 | DELETE | `/api/admin/bots/{id}` | Session + admin-area permission | Delete a bot |
 | GET | `/api/admin/bots/{id}/access` | Session + admin-area permission | Show what a bot can reach |
+| PUT | `/api/admin/bots/{id}/access` | Session + admin-area permission | Choose which channels a bot works in |
 | POST | `/api/admin/bots/{id}/avatar` | Session + admin-area permission | Set a bot's avatar |
 | GET | `/api/admin/bots/{id}/commands` | Session + admin-area permission | List a bot's commands |
 | PATCH | `/api/admin/bots/{id}/commands/{commandID}` | Session + admin-area permission | Enable or disable a command |
@@ -401,12 +414,15 @@ permission check on the channel.
 | PATCH | `/api/talks/{id}` | Session | Rename a temporary Talk or set its member limit |
 | POST | `/api/talks/{id}/invites` | Session | Invite a conversation to a Talk |
 
-#### Commands (2)
+#### Commands (5)
 
 | Method | Path | Authentication | Summary |
 |---|---|---|---|
 | GET | `/api/channels/{channelID}/commands` | Session | List the slash commands of a channel |
+| POST | `/api/channels/{channelID}/ephemeral/{noteID}/components` | Session | Use a component of an ephemeral note |
 | POST | `/api/channels/{channelID}/interactions` | Session | Run a slash command |
+| POST | `/api/channels/{channelID}/messages/{messageID}/components` | Session | Use a component of a bot's message |
+| POST | `/api/channels/{channelID}/modals/{modalID}` | Session | Submit a modal |
 
 #### Direct messages (9)
 
@@ -462,6 +478,14 @@ permission check on the channel.
 | DELETE | `/api/events/{id}/signup` | Session | Leave the role of an event |
 | DELETE | `/api/events/{id}/signup/{userID}` | Session | Remove a member from the roster of an event |
 
+#### Invites (3)
+
+| Method | Path | Authentication | Summary |
+|---|---|---|---|
+| GET | `/api/me/invites` | Session | List my invites |
+| POST | `/api/me/invites` | Session | Create an invite as a member |
+| DELETE | `/api/me/invites/{id}` | Session | Revoke my invite |
+
 #### Media (6)
 
 | Method | Path | Authentication | Summary |
@@ -473,7 +497,7 @@ permission check on the channel.
 | GET | `/api/link-preview/image` | Session | Proxied preview image |
 | GET | `/api/media/{id}` | Session | Download a media object |
 
-#### Messages (32)
+#### Messages (33)
 
 | Method | Path | Authentication | Summary |
 |---|---|---|---|
@@ -499,6 +523,7 @@ permission check on the channel.
 | PATCH | `/api/me/scheduled/{scheduledID}` | Session | Edit a scheduled message |
 | DELETE | `/api/me/scheduled/{scheduledID}` | Session | Delete a scheduled message |
 | GET | `/api/mentions` | Session | Mentions inbox |
+| GET | `/api/message-settings` | Session | Lifetime settings |
 | GET | `/api/messages/by-number/{number}` | Session | Get a message by its link number |
 | GET | `/api/messages/{messageID}/forward` | Session | Read the original of a forwarded message |
 | POST | `/api/messages/{messageID}/forward` | Session | Forward a message |
@@ -680,7 +705,7 @@ permission check on the channel.
 
 ### WebSocket events
 
-**Server to client (65):** `block_updated`, `cameras_capped`, `channels_changed`, `community_updated`, `dm_call_end`, `dm_call_ring`, `dm_created`, `dm_member_added`, `dm_member_removed`, `dm_prefs_updated`, `emoji_changed`, `event_comment`, `event_comment_notice`, `event_delete`, `event_reminder`, `event_signup_notice`, `event_update`, `forum_tags_changed`, `interaction_response`, `kicked`, `media_handshake`, `member_joined`, `member_roles_changed`, `member_timeout`, `message_create`, `message_delete`, `message_reaction`, `message_update`, `moderation_notice`, `permissions_changed`, `pins_changed`, `poll_update`, `pong`, `presence_snapshot`, `presence_update`, `read_state`, `reminder_update`, `reports_open`, `roles_changed`, `saved_updated`, `scheduled_message_update`, `screen_layers`, `screen_layers_wanted`, `screen_quality`, `screen_viewers`, `server_info`, `stage_hand`, `stage_talk_power`, `system_update`, `talk_leader`, `talk_moved`, `talk_reaction`, `thread_follow_updated`, `typing`, `user_stats`, `user_update`, `voice_kicked`, `voice_mute_state`, `voice_rooms`, `voice_snapshot`, `voice_speaking`, `voice_state_update`, `webrtc_candidate`, `webrtc_media_state`, `webrtc_offer`
+**Server to client (67):** `block_updated`, `cameras_capped`, `channels_changed`, `community_updated`, `dm_call_end`, `dm_call_ring`, `dm_created`, `dm_member_added`, `dm_member_removed`, `dm_prefs_updated`, `emoji_changed`, `event_comment`, `event_comment_notice`, `event_delete`, `event_reminder`, `event_signup_notice`, `event_update`, `forum_tags_changed`, `interaction_deferred`, `interaction_modal`, `interaction_response`, `kicked`, `media_handshake`, `member_joined`, `member_roles_changed`, `member_timeout`, `message_create`, `message_delete`, `message_reaction`, `message_update`, `moderation_notice`, `permissions_changed`, `pins_changed`, `poll_update`, `pong`, `presence_snapshot`, `presence_update`, `read_state`, `reminder_update`, `reports_open`, `roles_changed`, `saved_updated`, `scheduled_message_update`, `screen_layers`, `screen_layers_wanted`, `screen_quality`, `screen_viewers`, `server_info`, `stage_hand`, `stage_talk_power`, `system_update`, `talk_leader`, `talk_moved`, `talk_reaction`, `thread_follow_updated`, `typing`, `user_stats`, `user_update`, `voice_kicked`, `voice_mute_state`, `voice_rooms`, `voice_snapshot`, `voice_speaking`, `voice_state_update`, `webrtc_candidate`, `webrtc_media_state`, `webrtc_offer`
 
 
 **Client to server (20):** `media_handshake`, `ping`, `presence_idle`, `stage_hand`, `stage_talk_power`, `talk_reaction`, `typing`, `voice_join`, `voice_leave`, `voice_mute_state`, `voice_speaking`, `webrtc_answer`, `webrtc_camera_stop`, `webrtc_candidate`, `webrtc_diag`, `webrtc_layers`, `webrtc_request_keyframe`, `webrtc_screenshare_start`, `webrtc_screenshare_stop`, `webrtc_subscribe`
@@ -815,7 +840,7 @@ auto-delete; search SQL (all user input travels as parameters); and no new
 * **Hub state is in memory** (presence, voice rooms and the 30 second voice grace, bot gateway sessions and their replay buffers): a restart drops it and clients reconnect and rejoin.
 * **Regroup nuisance (RT-6):** two colluding members or the server can make a quiet listener regroup; backoff-limited.
 * **Audit log keeps deleted and edited message text** for moderation; operators must name it in their privacy notice. Direct messages are not audited.
-* **Attachments keep metadata** (stored as uploaded); only avatars, banners and emoji are re-encoded.
+* **Attachments are not re-encoded.** JPEG, PNG and WebP attachments lose their metadata (EXIF with GPS, XMP, IPTC, comments; `internal/imgstrip`, an Owner switch that is on by default since migration 0101); other files, and pictures stored before that, keep theirs. Only avatars, banners and emoji are re-encoded.
 * **Self-update sidecar:** the Docker socket is root on the host; the sidecar is off by default and described in [SECURITY.md](../../SECURITY.md#self-update-sidecar).
 * **No external audit, no bug bounty.** Reporting: [SECURITY.md](../../SECURITY.md#reporting-a-vulnerability).
 
@@ -825,7 +850,7 @@ Use a throwaway machine. Please do not test against instances you do not run.
 
 ```sh
 git clone https://github.com/mnema-xyz/talk && cd talk
-git checkout release/1.2.0            # or the 1.2.0 tag once it exists
+git checkout v3.3.10                  # or the latest release tag
 cp .env.example .env
 # Set at least: PUBLIC_URL (for example http://127.0.0.1:8080), JWT_SECRET (32+ random bytes),
 # POSTGRES_PASSWORD, S3_ACCESS_KEY, S3_SECRET_KEY, ADMIN_INITIAL_PASSWORD.

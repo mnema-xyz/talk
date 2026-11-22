@@ -45,7 +45,7 @@ Mnema Talk is a **lightweight, self-hosted chat and voice app for one community*
 ### 4. Admin & Security Model
 - **One Owner**: the account named by `ADMIN_USERNAME` (default **`admin`**; `users.role = 'admin'` in the database and API, "Owner" in the UI). The Owner has every permission without exception and **nobody** can edit, restrict, demote, disable, kick, rename or overwrite the Owner, or change their roles, not even a role with *Administrator*. Ownership is not transferable through the UI. System, storage and other accounts' passwords are Owner-only.
 - **Roles below the Owner**: custom roles (name, colour, position, permission bits) plus an implicit `@everyone`, with per-category and per-channel overwrites, Discord-style. The model, resolution order and hierarchy rules are in `doc/roles-and-permissions.md`; the code is `internal/perm`. Enforcement is server-side everywhere (REST, WebSocket hub, SFU, media serving); the UI only hides what a member cannot do. `@everyone`'s defaults must keep matching what members could always do; a new permission needs enforcement, a test, i18n (en + de) and a decision on its default.
-- **Invite-only registration**: public self-registration is permanently disabled. Only the Owner, or members holding *Manage invites*, can create invite codes.
+- **Invite-only registration**: public self-registration is permanently disabled. Invite codes come from the Owner and members holding *Manage invites* (admin area), and from members holding *Create invites* within the limits the admins set (`doc/invites.md`).
 - Security model summary: see `SECURITY.md`. Don't weaken it (cookie flags, CSRF origin check, CSP, upload sniffing, rate limits) without an explicit decision.
 - **Media retention must stay default-off**: `MEDIA_RETENTION_DAYS=0` means nothing is deleted automatically. Never change that default.
 
@@ -127,8 +127,9 @@ mnema-talk/
 ├── scripts/bench.sh, bench-compare.mjs, bench-baseline.txt # Hub fan-out, permission snapshot and SFU forward benchmarks against the stored baseline (`make bench`); CI gates only the allocations per packet on the SFU forward path (`make bench-allocs`)
 ├── scripts/security-floor.sh # Release step: raises the bundle security floor only on a `Security-Floor: raise` trailer
 ├── .github/workflows/
-│   ├── ci.yml               # CI: gitleaks, Go vet/fmt/tests, govulncheck, frontend, e2e (Chromium, WebKit, Firefox, macOS WebKit calls),
+│   ├── ci.yml               # CI: gitleaks, Go vet/fmt/tests, govulncheck, frontend, bot SDK contract tests, e2e (Chromium, WebKit, Firefox),
 │   │                        # docker build + smoke test, upgrade/restore drills, English-only check, trivy scan
+│   ├── ci-macos-calls.yml   # The WebKit call specs on macOS runners (not a required check)
 │   ├── clip-sweep.yml       # Nightly and on pull requests touching web/ or e2e/: the full clipping sweep (e2e/tests/clipping.spec.ts, CLIP_SWEEP=full) in four shards; nothing visually clipped at any size, language or zoom
 │   ├── image-scan.yml       # Weekly trivy scan of the released :latest image
 │   ├── plain-sweep.yml      # Nightly: 200,000 generated messages on a new seed, what the web renderer hides against the web and server plain forms (internal/mdplain: pushes, snippets); no leak allowed

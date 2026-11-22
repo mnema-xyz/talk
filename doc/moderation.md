@@ -28,8 +28,9 @@ the target out of reach between the check and the write.
 
 A timeout silences a member until a time passes: they can still read, and still
 delete or take back their own words, but they lose *Send messages*, *Attach
-files*, *Add reactions*, *Mention @all and @here*, *Connect*, *Speak*, *Video*
-*Send direct messages*, *Edit the wiki* and *Manage the wiki* (`perm.TimeoutMask`). Durations run from 5 seconds to 28 days; the interface
+files*, *Add reactions*, *Mention @all and @here*, *Connect*, *Speak*, *Video*,
+*Send direct messages*, *Edit the wiki*, *Manage the wiki* and *Create invites*
+([member invites](invites.md)) (`perm.TimeoutMask`). Durations run from 5 seconds to 28 days; the interface
 offers 1 min, 5 min, 1 h, 1 day, 1 week or a custom time, with an optional
 reason of up to 200 characters.
 
@@ -156,7 +157,7 @@ vector. While the *write* wait runs a new member cannot start a conversation or
 a group, nor add people to one (`403` with the seconds left; `GET
 /api/permissions` then says `can_start_direct_messages: false`). They can answer
 a conversation where the other person wrote first, but not write first, not even
-in an existing, still empty conversation (`internal/chat`, `gateNewMemberFirstWrite`).
+in an existing, still empty conversation (`gateNewMemberFirstWrite` in `internal/chat/messages/dm_gate.go`).
 Reactions in conversations follow the *react* wait, and joining or starting the call of a
 conversation (which includes speaking and video there) follows the *speak* wait.
 
@@ -630,9 +631,9 @@ current table.
 
 | Class | Who reads it | Actions |
 |---|---|---|
-| Auditors | Every holder of *View audit log* | The actions of roles (`role.create`, `role.update`, `role.delete`, `role.reorder`, `role.self_assign`, `role.self_remove`), members (`user.disable`, `user.enable`, `user.sessions_revoke`, `user.status`, `user.roles_set`, `user.talk_kick`: the admin-wide kick, which names no Talk), invites (`invite.create`, `invite.vanity_link`, `invite.update`, `invite.revoke`), moderation (`moderation.timeout`, `moderation.timeout_remove`, `moderation.ban`, `moderation.unban`, `moderation.ban_expired`, `moderation.kick`), automod (`automod.rule_create`, `automod.rule_update`, `automod.rule_delete`, `automod.timeout`, `automod.raid`), custom emoji (`emoji.create`, `emoji.rename`, `emoji.delete`), events without a Talk (`event.create`, `event.edit`, `event.cancel`, `event.comment_delete`, `event.role_template_create`, `event.role_template_update`, `event.role_template_delete`) and the wiki (`wiki.create`, `wiki.edit`, `wiki.move`, `wiki.delete`, `wiki.restore`, `wiki.lock`, `wiki.image`; the wiki is open to every member who may view it) |
+| Auditors | Every holder of *View audit log* | The actions of roles (`role.create`, `role.update`, `role.delete`, `role.reorder`, `role.self_assign`, `role.self_remove`), members (`user.disable`, `user.enable`, `user.sessions_revoke`, `user.status`, `user.roles_set`, `user.talk_kick`: the admin-wide kick, which names no Talk), invites (`invite.create`, `invite.vanity_link`, `invite.update`, `invite.revoke`, `invite.limits`, `invite.member_create`, `invite.member_revoke`: the bounds of member invites and the invites members create and revoke themselves), moderation (`moderation.timeout`, `moderation.timeout_remove`, `moderation.ban`, `moderation.unban`, `moderation.ban_expired`, `moderation.kick`), automod (`automod.rule_create`, `automod.rule_update`, `automod.rule_delete`, `automod.timeout`, `automod.raid`), custom emoji (`emoji.create`, `emoji.rename`, `emoji.delete`), events without a Talk (`event.create`, `event.edit`, `event.cancel`, `event.comment_delete`, `event.role_template_create`, `event.role_template_update`, `event.role_template_delete`) and the wiki (`wiki.create`, `wiki.edit`, `wiki.move`, `wiki.delete`, `wiki.restore`, `wiki.lock`, `wiki.image`; the wiki is open to every member who may view it) |
 | Channel | Holders of *View audit log* **who can view the entry's channel when they read**; an entry that names no channel is hidden from them | `message.*`, `poll.*`, `voice.*` (with `voice.disconnect`, a removal from one Talk; older versions wrote that removal as `user.talk_kick` with the Talk in its details, and such entries are read the same way), `forum.*` (post titles, their authors and tag names of a possibly private forum), `channel.*` (a private channel's name, topic and overwrites are private too), `event.talk_*`, `moderation.bulk_delete` |
-| Owner and Administrators only | The Owner and members with *Administrator* | `category.*` and `layout.apply` (a private category's name and overwrites are private too, and a layout lists every placement), `auth.*` (sign-ins, failures, lockouts, password changes of other members), `webhook.*`, `outgoing_webhook.*`, `bot.*`, `media.*`, `settings.*`, `system.*`, `import.*`, `moderation.note_*`, `user.password_set`, `user.password_reset`, `user.lockout_clear`, `report.*` (a report may concern a private channel or a direct message), `admin.*` (routes not yet named in the route table), and every action without a row of its own |
+| Owner and Administrators only | The Owner and members with *Administrator* | `category.*` and `layout.apply` (a private category's name and overwrites are private too, and a layout lists every placement), `auth.*` (sign-ins, failures, lockouts, password changes of other members), `webhook.*`, `outgoing_webhook.*`, `bot.*`, `media.*`, `settings.*`, `system.*`, `import.*`, `moderation.note_*`, `user.password_set`, `user.password_reset`, `user.two_factor_reset`, `user.lockout_clear`, `report.*` (a report may concern a private channel or a direct message), `admin.*` (routes not yet named in the route table), and every action without a row of its own |
 
 The check runs on every read against the current permissions, so access that is
 granted later also opens the older entries of that channel, and access that is

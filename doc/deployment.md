@@ -11,8 +11,8 @@ New here? Start with the [quick start](quick-start.md); platform specifics
 (Synology, Unraid, a plain VPS) are in [platform-notes.md](platform-notes.md) and
 all updating is on one page, [updating.md](updating.md). The steps below are the
 manual, platform-independent reference; the setup assistant
-(`docker run --rm -it ghcr.io/mnema-xyz/mnema-talk setup`) does the "Fresh
-install" part for you.
+(`docker run --rm -it --user "$(id -u):$(id -g)" -v "$PWD:/out" ghcr.io/mnema-xyz/mnema-talk setup`,
+run in an empty folder) does the "Fresh install" part for you.
 
 ## Ports
 
@@ -263,6 +263,6 @@ either make it public once under the package's settings on GitHub, or run
 
 Everything about updating is on one page: [updating.md](updating.md). It covers
 the backup, the update check and the optional "Update now" button, which image
-tag to follow (`:X.Y`, `:latest` or a pinned `:X.Y.Z`; there is no `:X` tag),
+tag to follow (`:X.Y`, `:latest` or a pinned `:X.Y.Z`; GHCR has no `:X` tag),
 the command-line steps, verification and rollback. Per-version notes for
 operators: [upgrade.md](upgrade.md).

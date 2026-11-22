@@ -3,8 +3,10 @@
 Short answers to common bot tasks, each in TypeScript and in Go. They build on
 the program of the [SDK quick start](bot-sdk-quickstart.md): `client` (TypeScript)
 and `c` (Go) are the connected client, and a snippet goes where that program
-registers its handlers. Every snippet is compiled against the SDK in the
-repository before it is published here.
+registers its handlers. The snippets are written against the current releases
+of both SDKs ([TypeScript](https://github.com/mnema-xyz/bot-sdk-js),
+[Go](https://github.com/mnema-xyz/bot-sdk-go)), which live in their own
+repositories.
 
 The TypeScript snippets use these imports:
 

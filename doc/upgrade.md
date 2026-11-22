@@ -316,7 +316,7 @@ curl -fsS http://127.0.0.1:8080/api/health
 For an update that kept the same database volume, the backup restore is
 required if migrations changed its schema. The restore replaces the database
 and media with the backup's state and preserves the current `.env` and compose
-configuration. Keep the complete backup from step 1 and the saved compose file
+configuration. Keep the complete backup ([Updating, step 1](updating.md#1-back-up)) and the saved compose file
 until the new release has passed your application checks.
 
 #### Automatic rollback in an unattended updater
@@ -341,6 +341,49 @@ this order when the new version does not become healthy:
    newer one.
 
 ## Version notes
+
+### 3.0.x to 3.3.x
+
+Each 3.x release after 3.0.0 is an ordinary update (procedure above, backup
+first); none breaks the public API. The notes at the top of this page describe
+what changed; this list says which release brought it. Taking several releases
+at once applies their migrations in order (see the migration table under
+[1.1.x → 1.2.0](#database)).
+
+- **Image path (3.2.1).** The repository moved to the mnema-xyz organization.
+  Releases after 3.2.1 are published only at `ghcr.io/mnema-xyz/mnema-talk`;
+  `ghcr.io/msch128/mnema-talk` gets no new ones and GHCR does not redirect, so
+  `docker compose pull` there finds nothing new. If `MNEMA_IMAGE` in `.env`
+  still names the old path, change it to `ghcr.io/mnema-xyz/mnema-talk` with
+  the same tag, then `docker compose pull && docker compose up -d`. Admin >
+  System says so while the old path is set, and "Update now" refuses until it
+  is changed. The updater trusts releases signed before and after the move.
+- **3.0.2:** `DB_STATEMENT_TIMEOUT` and `DB_MAX_CONNS`
+  ([Database statement timeout](#database-statement-timeout)).
+- **3.0.3:** optional key rotation ([Key rotation](#key-rotation)).
+- **3.0.4:** migrations 0101 and 0102; picture attachments lose their metadata
+  ([details](#picture-attachments-lose-their-metadata-migration-0101)), bot
+  upload captions need `allowed_mentions`, Trusted Types in the policy.
+- **3.0.9 and 3.0.10:** migrations 0103 and 0104; snippets, mentions next to
+  `@all`, and the calls of conversations (the sections above).
+- **3.1.0:** migration 0105, the bot platform (manifests, buttons and selects,
+  the bot SDKs; [bots.md](bots.md)).
+- **3.2.0:** migrations 0106 and 0107: messages with a lifetime and
+  auto-delete in hours
+  ([details](#messages-with-a-lifetime-auto-delete-in-hours-migration-0106)); a
+  bot can be given access to every channel. An older release refuses to start
+  on the database 0106 migrated.
+- **3.3.0:** migrations 0108 to 0110: members can create invites
+  ([invites.md](invites.md)). On an existing install the new permission
+  *Create invites* goes only to roles that already hold *Manage invites*, so
+  members cannot create invites until the Owner gives it to them.
+- **3.3.5:** the server checks at startup that its database role may run
+  `pg_logical_emit_message` (PostgreSQL grants it to PUBLIC) and does not
+  start without it. Only an external PostgreSQL whose administrator revoked
+  that grant is affected ([operations.md](operations.md#database)).
+- **3.3.8 and 3.3.9:** migrations 0111 (display names lose invisible format
+  characters) and 0112 (a new covering index for the unread counts, built at
+  startup; it blocks message writes for about 0.5 s per million messages).
 
 ### Upgrading to 3.0.0
 
@@ -521,6 +564,9 @@ should read the stable `error.code` instead.
   sets `UPDATER_IMAGE_REPOSITORY` drops the mirror. See [Updating](updating.md).
 - `mnema-talk setup` (guided assistant) and the Owner's *Get started* checklist
   are new; nothing in an existing install changes.
+- `INITIAL_LANGUAGE` now defaults to `en` (it was `de` since 1.1.0). It only
+  names the default channels of a brand-new installation; an existing one is
+  never renamed.
 
 #### 2.1.0
 
@@ -528,17 +574,14 @@ No migration, no setting. Invites can be edited (expiry, use limit), Discord
 roles can be mapped to existing roles on import, and the composer grows with
 its text and takes pasted or dropped files.
 
-### 1.2.x → next release
+### 1.2.x → 1.5.x
 
 Update with the procedure above and take the backup first. Nothing in `.env` has to change.
-
-The in-app privacy policy is now version 1.7 (the version is shown on the
-page; members are not asked to accept it again). It describes the TURN relay
-built into the server as part of your instance (IP address and port seen,
-encrypted media it cannot read, nothing stored persistently) while it is
-offered, and it names the external TURN servers from `WEBRTC_TURN_URLS`, which
-earlier versions never listed. `GET /api/legal` gains the field `builtin_turn`.
-If you publish your own copy of the policy, update it to match.
+1.3.0 adds migration 0076 (a covering index for the unread counts), 1.5.0
+migration 0077 and 1.5.1 migration 0078 (it drops the index 0076 made
+redundant); see the [migration table](#database). 1.5.0 also brought the setup
+assistant and the automatic voice address, described under
+[1.5.x → 2.0.0](#15x--200).
 
 Migration 0077 drops `native_session_families`, `native_access_tokens`,
 `native_refresh_tokens` and `native_ciphertext_events` (added by 0015 and 0016).
@@ -548,10 +591,18 @@ web, desktop or bot client is affected, and the event `native_access_renewed`,
 which the server never sent, is removed from the event registry. A rollback to
 an older image needs the restore of the pre-update backup (see "Rollback" above).
 
-### 1.4.x → 2.0.0
+### 1.5.x → 2.0.0
 
 Update with the procedure above and take the backup first. No migration, no
-API break.
+API break. (Coming from 1.4.x or older, also read 1.2.x → 1.5.x above.)
+
+The in-app privacy policy is now version 1.7 (the version is shown on the
+page; members are not asked to accept it again). It describes the TURN relay
+built into the server as part of your instance (IP address and port seen,
+encrypted media it cannot read, nothing stored persistently) while it is
+offered, and it names the external TURN servers from `WEBRTC_TURN_URLS`, which
+earlier versions never listed. `GET /api/legal` gains the field `builtin_turn`.
+If you publish your own copy of the policy, update it to match.
 
 **New port 3479 UDP+TCP for the built-in voice relay (TURN); forward it on your
 router; switch with `WEBRTC_BUILTIN_TURN=auto|on|off`; external coturn keeps
@@ -566,18 +617,18 @@ working and turns the built-in relay off automatically.**
   `off` never runs it. Details, limits and metrics:
   [operations.md](operations.md#built-in-turn-relay).
 - **`docker-compose.yml` publishes port 3479 (UDP and TCP) for the app.** Take
-  the new file (step 3 of the procedure) and forward 3479/udp and 3479/tcp in
+  the new file ([pinned procedure](updating.md#pinned-or-new-minor-line)) and forward 3479/udp and 3479/tcp in
   your router (only needed while the relay runs; with `off`, or an external
   TURN under `auto`, nothing listens there). It does not collide with coturn on
   3478; if something else uses 3479, set `WEBRTC_BUILTIN_TURN_PORT`. Hosts that freeze their
   compose file keep the old one until they take the new file.
 - **Admin > System** shows the relay (listening, sessions, a reachability
   hint) and warns when it could not start.
-- **Easier first setup.** `docker run --rm -it ghcr.io/msch128/mnema-talk setup`
+- **Easier first setup (from 1.5.0).** `mnema-talk setup` (today run as in the [quick start](quick-start.md#step-1-make-the-files))
   writes a complete `.env` and `docker-compose.yml`, and the admin Status tab
   has a *Setup checks* list ([quick start](quick-start.md),
   [setup checks](operations.md#setup-checks)).
-- **Two new outbound requests, both only from the server's IP address.** A
+- **Two new outbound requests (from 1.5.0), both only from the server's IP address.** A
   production server with an empty `WEBRTC_NAT_1TO1_IP` finds its public IPv4
   address with a STUN request to Google or Cloudflare at startup and announces
   it (`WEBRTC_AUTO_ANNOUNCE=false` turns this off). The server clock is compared
@@ -1321,7 +1372,7 @@ operator is below. Update with the procedure above; take the backup first.
 - **coturn is capped** (only if you run the `turn` profile). The compose file
   now starts coturn with `--user-quota=8` (relayed sessions per credential) and
   `--total-quota=48` (all sessions, matching the 49 ports of
-  `49152-49200`). Fetch the compose file of the tag (step 3) and restart the
+  `49152-49200`). Fetch the compose file of the tag ([pinned procedure](updating.md#pinned-or-new-minor-line)) and restart the
   profile. If you widened the relay port range, raise `--total-quota` with it;
   see [TURN](operations.md#turn-coturn).
 - **`PUBLIC_URL` over plain `http://` warns.** In production and staging, a
@@ -1534,12 +1585,14 @@ operator is below. Update with the procedure above; take the backup first.
 - **PostgreSQL 17 → 18, one manual step.** The database moves to a new
   volume (`postgres18-data`); the PostgreSQL 17 volume (`postgres-data`)
   stays untouched for rollback. Take the complete database/media/config backup
-  in step 1 with 0.4.x still running. Fetch every script listed in step 3,
-  including `backup-common.sh`, `backup-online.sh` and `upgrade-postgres.sh`. Instead of the
-  ordinary startup in step 5, run:
+  ([Updating, step 1](updating.md#1-back-up)) with 0.4.x still running. Follow
+  the [pinned procedure](updating.md#pinned-or-new-minor-line): it fetches the
+  new compose file and every script, including `backup-common.sh`,
+  `backup-online.sh` and `upgrade-postgres.sh`. Instead of its final
+  `docker compose up -d`, run:
 
   ```sh
-  # steps 1–4 completed: backup saved, new compose/scripts/image selected
+  # backup saved, new compose file, scripts and image selected
   docker compose pull
   ./scripts/upgrade-postgres.sh
   ```
@@ -1639,7 +1692,8 @@ Operator-relevant changes (0.3.1, 0.3.2, 0.3.3 and 0.4.0):
   instead of a fixed `mnema-talk:local`, the app carries the updater labels,
   and there is a new optional `updater` service (profile `autoupdate`) with
   an internal network `mnema-updater`. Fetch the compose file of the tag
-  (step 3); an old file keeps working but cannot run released images.
+  ([pinned procedure](updating.md#pinned-or-new-minor-line)); an old file keeps
+  working but cannot run released images.
 - **Released images** on GHCR for `linux/amd64` and `linux/arm64`
   (`:X.Y.Z`, `:X.Y`, `:latest`). Set `MNEMA_IMAGE` to use one instead of
   building on the server. If the package is private, `docker login ghcr.io`

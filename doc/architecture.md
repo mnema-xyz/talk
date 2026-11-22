@@ -31,7 +31,7 @@ in PostgreSQL; uploads, avatars and profile banners live in S3-compatible object
 | [`internal/httpx`](../internal/httpx/middleware.go) | Middleware: request IDs, security headers (CSP, HSTS in production), CORS, CSRF origin check, body limits, rate limits ([`ratelimit.go`](../internal/httpx/ratelimit.go)), client IP from trusted proxies ([`request.go`](../internal/httpx/request.go)), JSON errors. |
 | [`internal/auth`](../internal/auth/service.go) | Password hashing, signed session cookies with a per-user `token_version` (revocation), login lockout, invite codes, admin seeding, user administration, password re-authentication for sensitive actions ([`authn/reauth.go`](../internal/auth/authn/reauth.go)); sign-in handlers, two-factor and the e-mail flows live in [`internal/auth/authn`](../internal/auth/authn/). |
 | [`internal/perm`](../internal/perm/perm.go), [`internal/roles`](../internal/roles/handler.go) | Roles and permissions: the permission bits, the in-memory `Snapshot` that resolves base, role and overwrite permissions (and the hierarchy rules), the cache with live invalidation, and the HTTP API for roles, member roles and channel overwrites. See [roles-and-permissions.md](roles-and-permissions.md). |
-| [`internal/chat`](../internal/chat/handler.go) | Categories, channels (text and voice), layout, messages, replies, threads, reactions, mentions (by name, `@all`/`@here` and `@Role`, with a fan-out cap) and the mentions inbox, read state, notification levels ([`notify.go`](../internal/chat/readstate/notify.go)), search ([`search.go`](../internal/chat/search/search.go), filters in [`search_filters.go`](../internal/chat/search/search_filters.go)), members. Since 1.1 also direct messages ([`dm/`](../internal/chat/dm)), blocks ([`blocks/blocks.go`](../internal/chat/blocks/blocks.go)), reports ([`reports.go`](../internal/chat/reports/reports.go)), saved messages ([`saved.go`](../internal/chat/saved/saved.go)), forwarding ([`forward.go`](../internal/chat/messages/forward.go)) and thread follow ([`thread_follow.go`](../internal/chat/messages/thread_follow.go)). The package is split by domain into layers: [`core`](../internal/chat/core) (model, lookups, permission guard) at the bottom, then `mentions` and `readstate`, `messages`, `channels`, `dm`, `search`, `reports`, `forum` and `saved`, and `talks`, `botapi` and `account` on top; the root package only holds the `Handler` that builds each domain's small `API` from its fields and mounts the routes. [`internal/repo/boundaries_test.go`](../internal/repo/boundaries_test.go) enforces which package may import which. |
+| [`internal/chat`](../internal/chat/handler.go) | Categories, channels (text and voice), layout, messages, replies, threads, reactions, mentions (by name, `@all`/`@here` and `@Role`, with a fan-out cap) and the mentions inbox, read state, notification levels ([`notify.go`](../internal/chat/readstate/notify.go)), search ([`search.go`](../internal/chat/search/search.go), filters in [`search_filters.go`](../internal/chat/search/search_filters.go)), members. Since 1.1 also direct messages ([`dm/`](../internal/chat/dm)), blocks ([`blocks/blocks.go`](../internal/chat/blocks/blocks.go)), reports ([`reports.go`](../internal/chat/reports/reports.go)), saved messages ([`saved.go`](../internal/chat/saved/saved.go)), forwarding ([`forward.go`](../internal/chat/messages/forward.go)) and thread follow ([`thread_follow.go`](../internal/chat/messages/thread_follow.go)). The package is split by domain into layers: [`core`](../internal/chat/core) (model, lookups, permission guard) and `stage` (turning a Talk into a Stage) at the bottom, then `mentions`, `blocks` and `readstate`, `messages`, `channels`, `dm`, `search`, `reports`, `forum`, `saved` and `expiry` (the end of timed messages), and `talks`, `botapi` and `account` on top; the root package only holds the `Handler` that builds each domain's small `API` from its fields and mounts the routes. [`internal/repo/boundaries_test.go`](../internal/repo/boundaries_test.go) enforces which package may import which. |
 | [`internal/later`](../internal/later/service.go) | Reminders and scheduled messages: private per-member lists, the sweep that delivers and sends them, and their REST routes (see "Reminders and scheduled messages"). |
 | [`internal/automod`](../internal/automod/rule.go), [`internal/moderation`](../internal/moderation/automod_rules.go) | Automod (1.2): rules compiled once per configuration version and checked in the send and sign-up paths (mention spam, new accounts, raid protection, word and link lists); a hit blocks or flags a message and adds an entry to the reports queue. `moderation` is the REST surface of the rules and of the per-member moderation history with private moderator notes. See [moderation.md](moderation.md). |
 | [`internal/communityevents`](../internal/communityevents/handler.go) | Community events (1.2): events, RSVPs, cover images, the scheduler that starts events and sends reminders 15 minutes ahead. See [events.md](events.md). |
@@ -60,6 +60,9 @@ in PostgreSQL; uploads, avatars and profile banners live in S3-compatible object
 | [`internal/backupstatus`](../internal/backupstatus/) | Reads the status file `scripts/backup.sh` writes (last backup, size, restore test) for Admin > Status. |
 | [`internal/setupwizard`](../internal/setupwizard/), [`internal/setupcheck`](../internal/setupcheck/), [`internal/portconflict`](../internal/portconflict/), [`internal/stunprobe`](../internal/stunprobe/) | The first-run helpers: `mnema-talk setup` (writes `.env` and `docker-compose.yml`), the green/amber/red setup checks of the Status page and the log, the readable "port already in use" message, and the STUN binding request that finds the public IPv4 address. |
 | [`internal/debugsrv`](../internal/debugsrv/), [`internal/memlimit`](../internal/memlimit/), [`internal/imgproc`](../internal/imgproc/), [`internal/textcut`](../internal/textcut/) | The loopback-only pprof server (`PPROF_ADDR`), the soft Go memory limit at 85 % of the container limit, the image helpers that uploads share (GIF structure check, redraw, encode) and grapheme-safe shortening of user text. |
+| [`internal/fastudp`](../internal/fastudp/fastudp.go) | Sends the SFU's and the built-in TURN relay's UDP datagrams from many goroutines at once on one socket (`sendto(2)` on the descriptor without Go's write lock, Linux and IPv4 only; everything else goes through the wrapped connection). |
+| [`internal/imgstrip`](../internal/imgstrip/imgstrip.go), [`internal/reportcount`](../internal/reportcount/reportcount.go) | Removes the metadata of uploaded JPEG, PNG and WebP files (EXIF with its GPS position, XMP, comments, thumbnails) without re-encoding them, keeping only the orientation; and counts the open reports (from members and automod) and tells the moderators when the number changes. |
+| [`internal/tools/openapifix`](../internal/tools/openapifix/main.go), [`internal/testutil`](../internal/testutil/) | Build and test helpers: the fixes to the generated OpenAPI document that swag cannot express (run by `make`), and shared test fixtures. |
 | [`internal/repo`](../internal/repo/limits_test.go) | The repository-wide checks: size limits for Go files and functions ([AGENTS.md](../AGENTS.md)). |
 | [`internal/version`](../internal/version/version.go) | Version and commit baked in at build time (`VERSION` / `REVISION` build args). |
 | [`web/web.go`](../web/web.go) | Embeds `web/dist` with `//go:embed` and serves the SPA. |
@@ -213,7 +216,7 @@ words in conversations (the others keep theirs) and deletes conversations
 nobody is left in; the export lists the member's conversations by id and their
 own messages.
 
-**Calls.** A conversation has no call of its own: "Start a Talk" opens a temporary Talk and posts an invitation, and the server rings the other members (`dm_call_ring`, `dm_call_end`, a "missed call" message when nobody answers); see [Talks](talks.md#ringing).
+**Calls.** A conversation has no call of its own: its call button ("Call (starts a Talk)") opens a temporary Talk and posts an invitation, and the server rings the other members (`dm_call_ring`, `dm_call_end`, a "missed call" message when nobody answers); see [Talks](talks.md#ringing).
 
 ## Blocking and reports
 
@@ -362,7 +365,7 @@ author or text. A delivered reminder stays in the list until dismissed (or for
 send path** (`scheduled_messages`, at most 50 per member, text only). Creating
 one needs Send messages in the channel, but nothing is promised: at `send_at`
 the worker loads the account (disabled, banned and deleted accounts do not
-send), builds the same send context as a request (`chat.SendContextFor`, so a
+send), builds the same send context as a request (`messages.SendContextFor`, so a
 changed role, channel overwrite, pending rules or a timeout apply), validates
 the reply and thread target again and inserts the message with
 `messages.InsertMessage`, whose transaction applies slow mode and the direct message
@@ -629,7 +632,7 @@ client works out the absolute time from the member's own time zone ("tonight"
 is 23:59 and "tomorrow morning" 08:00 where they are) and sends it as
 `expires_at`; the server only checks that it lies ahead, at most a year. Two
 mechanisms make the clearing exact without a timer per member: every read of a
-user (`auth.userColumns`, the member list) maps a
+user (`auth.UserColumns`, the member list) maps a
 status past its time to an empty one, so nobody sees a stale line even between
 sweeps, and `Handler.RunStatusExpiry` (every 30 seconds, an indexed partial
 scan) clears the rows and broadcasts the usual `user_update`. Setting another
@@ -983,7 +986,7 @@ another look at several times this size, or when a load is seen above 50 ms.
 ## Talks, sessions and operator status (1.2)
 
 **Lobbies, Talks and Stages.** A lobby channel (`channels.is_lobby`, migration 0059) opens a temporary Talk
-(`is_temp`, `leader_id`) for the member who joins it. `chat.TalkManager` creates it, removes an empty one
+(`is_temp`, `leader_id`) for the member who joins it. `talks.TalkManager` creates it, removes an empty one
 after `DefaultTalkEmptyGrace` (30 seconds) and removes every temporary Talk at start. A Stage
 (`channels.is_stage`, migration 0068) is a Talk in which talk power decides who may send
 media; the permission *Manage stage* (`1 << 24`) grants it, hands raised and reactions are relayed over
@@ -991,7 +994,7 @@ the hub and kept nowhere. See [talks.md](talks.md).
 
 **Sessions.** `user_sessions` (migrations 0064 and 0065) describes each signed cookie by its `jti`: a coarse
 device label, creation and last activity. The cookie stays the credential; a periodic sweep
-(`Handler.RunSessionSweep` in `internal/auth`) signs out a session that was inactive for longer than
+(`Handler.RunSessionSweep` in `internal/auth/authn`) signs out a session that was inactive for longer than
 `instance_settings.session_inactivity_days` (default 7), and the same condition is checked when the cookie is
 used. See [operations.md](operations.md#sessions-and-inactivity-sign-out).
 
@@ -1007,7 +1010,8 @@ and Administrators) gathers version, update state, database, storage, backup and
   `wiki`, `admin`, `settings`), each with `components/`, `composables/` and `lib/`.
   `shared/` holds what several features use, `app/` the shell that composes them
   (sidebar, user bar, member list, sign-in, routing). `stores/`, `types/`, `i18n/`
-  and `directives/` serve all of them. [`lib/media/`](../web/src/lib/media/) is the
+  and `directives/` serve all of them; `sw/` is the service worker (Web Push and
+  the app shell) and `compat/` holds the wire-compatibility tests. [`lib/media/`](../web/src/lib/media/) is the
   media encryption of Talks and stays where it is.
   A feature imports `shared` and itself, not another feature; the allowed edges are
   the tables in [`web/scripts/importZones.ts`](../web/scripts/importZones.ts), checked by ESLint.
@@ -1019,7 +1023,7 @@ and Administrators) gathers version, update state, database, storage, backup and
   channels and conversations the member already sees: the current slug, then
   `previous_slugs`, then a legacy id; the last two are rewritten (replace) to the
   canonical address. The server has no slug-resolving endpoint. Slugs are assigned by
-  `chat.assignSlug` inside the transaction that creates or renames a channel; former
+  `channels.assignSlug` inside the transaction that creates or renames a channel; former
   slugs stay reserved for the channel in `channel_slugs` (up to 10 newest, older ones
   are freed; temporary Talks keep a fixed `talk-<8hex>` slug that is never changed on
   rename and not kept in the history).
@@ -1072,8 +1076,11 @@ and Administrators) gathers version, update state, database, storage, backup and
   [`styles/`](../web/src/styles): `buttons.css` (the `.btn` family and the focus
   ring), `controls.css` (checkbox, radio, switch, slider, fields, select),
   `surfaces.css` (dialogs, menus, popovers, tooltips, toasts, list rows,
-  elevation and motion) and `settings.css` (the cards and groups of the
-  account and audio settings pages). They use tokens only and no inline style, because the
+  elevation), `settings.css` (the cards and groups of the account and audio
+  settings pages), `motion.css` (motion durations, scales and the patterns
+  built on them), `feedback.css` (message and sidebar flashes, drag feedback,
+  scrollbars and tooltips) and `calls.css` (the incoming call card and the
+  caller's strip of direct-message calls). They use tokens only and no inline style, because the
   Content-Security-Policy forbids it.
 - **1.1 features in the UI**: direct messages
   ([`DmCreateDialog.vue`](../web/src/dm/components/DmCreateDialog.vue),

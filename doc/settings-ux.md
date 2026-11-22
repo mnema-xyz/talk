@@ -37,7 +37,7 @@ their own inline editor with its own bar.
 
 ## Draft + Save
 
-Built from two shared parts, never a one-off variant:
+Built from three shared parts, never a one-off variant:
 
 - `web/src/shared/composables/useSettingsDraft.ts`: the draft, dirty detection, reset, the
   save lifecycle, the discard guard and Ctrl/Cmd+S.

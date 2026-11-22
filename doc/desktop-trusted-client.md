@@ -622,9 +622,10 @@ of this exists and nothing changes.
 Since the 1.1 client one window shows several servers: a **rail** on the left
 (a page of the host, independent of every bundle and server) lists them with an
 unread dot and a mention count each, and the page of one server sits next to
-it. One account per server, no federation; at most nine, reached with Ctrl+1 to
-Ctrl+9 (Cmd on macOS), reordered by dragging or Alt+arrow, removed from the
-tile's menu. Servers stay fully separate:
+it. One account per server, no federation; there is no limit on the number of
+servers (Ctrl+1 to Ctrl+8 reach the first eight and Ctrl+9 the last, Cmd on
+macOS, and Ctrl/Cmd+K opens a quick switcher), reordered by dragging or
+Alt+arrow, grouped in folders, removed from the tile's menu. Servers stay fully separate:
 
 * **A page is tied to its server by its webview label** (`i-<id>`, the id is the
   first 8 bytes of SHA-256 over the instance address, hex). The protocol
@@ -688,8 +689,9 @@ The signed web bundle covers the web app. The program around it (the shell) is
 replaced by its own, separate mechanism, so that users never have to download
 an installer by hand after the first time.
 
-* **Feed and key.** On Windows the installer is a per-user NSIS package; macOS
-  has a signed `.app.tar.gz` and Linux signed AppImages. All are built by the
+* **Feed and key.** On Windows the installer is a per-user NSIS package and the
+  portable copy a signed ZIP; macOS has a signed `.app.tar.gz` and Linux signed
+  AppImages. All are built by the
   [talk-desktop](https://github.com/mnema-xyz/talk-desktop) release
   workflow on a `vX.Y.Z` tag. Installed clients read
   `https://github.com/mnema-xyz/talk-desktop/releases/latest/download/latest.json`
@@ -739,7 +741,7 @@ an installer by hand after the first time.
 | --- | --- |
 | **No longer possible** | Injecting or replacing JavaScript, WebAssembly, CSS or HTML of the app. Reading the session cookie from the page. Turning an attachment or API answer into code in the app origin. Downgrading to an older, vulnerable app: below the `security_floor`, or below the highest bundle this client already verified for the server's contract. Serving a bundle with another key. |
 | **Still possible (unchanged)** | Seeing metadata (who talks when, frame sizes, layers, quality choices, connection timing). Reading text messages and attachments. Asserting group membership and relaying MLS handshakes: adding a member, swapping a leaf, steering a newcomer into its own group, forcing group restarts, withholding heartbeats (see [SECURITY.md](../SECURITY.md)). Denial of service: dropping messages, refusing connections, lying in `/api/health` so that the client refuses to connect. Sending hostile *data* (messages, link previews, ICE servers) that the unchanged app code must handle. |
-| **Still possible for the supply chain** | Whoever holds the signing key, or the GitHub account that publishes desktop installers, can ship a malicious app. The key is separate from the server; compromise of a community server does not give it. The installer itself is not Authenticode-signed yet (see "Known gap" below), so how the user obtained it still matters. |
+| **Still possible for the supply chain** | Whoever holds the signing key, or the GitHub account that publishes desktop installers, can ship a malicious app. The key is separate from the server; compromise of a community server does not give it. The installer itself is not Authenticode-signed (see "Known gap" below), so how the user obtained it still matters. |
 | **Freeze** | A network attacker can withhold updates; the client keeps what it has. The `security_floor` and the high-water marks only move when a newer bundle is seen. |
 
 Browser users remain exactly as in SECURITY.md: the server serves the code.
@@ -752,7 +754,7 @@ notarized, because the project does not buy certificates. Consequences:
 SmartScreen and Gatekeeper warn on first run, and nothing ties the program to
 the publisher on the user's machine. Later updates are verified by the pinned
 minisign key instead.
-The desktop release carries a `SHA256SUMS` file next to the ZIP, which is only
+The desktop release carries a `SHA256SUMS` file next to the installers, which is only
 protection against a corrupted download: it is published by the same account in
 the same release, so whoever can replace the ZIP can replace the checksums.
 It does not prove who built the file. Anyone who needs more than that builds the client from source. The bundle key pinned in the

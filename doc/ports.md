@@ -119,7 +119,7 @@ own connections (to your server, and to the STUN or TURN servers you list in
 |---|---|---|---|---|
 | `stun.l.google.com`, `stun.cloudflare.com` | 19302 and 3478, UDP | At startup and every 10 minutes, production only, while `WEBRTC_NAT_1TO1_IP` is empty | One STUN request to find the server's public IPv4 address. The STUN server sees the server's IP address, nothing else | `WEBRTC_AUTO_ANNOUNCE=false` (then set `WEBRTC_NAT_1TO1_IP`); servers: `WEBRTC_DETECT_STUN_URLS` |
 | `api.github.com` | 443, TCP | Every 30 minutes | Check for a newer release (admin System tab) | `UPDATE_CHECK_ENABLED=false` |
-| `time.cloudflare.com`, `pool.ntp.org` | 123, UDP | Every 6 hours | Compare the server clock for the admin setup checks | `CLOCK_CHECK_ENABLED=false` |
+| `time.cloudflare.com`, `pool.ntp.org` | 123, UDP | At startup and every 6 hours | Compare the server clock for the admin setup checks | `CLOCK_CHECK_ENABLED=false` |
 | Your mail server | `SMTP_PORT`: 587 (STARTTLS) by default, 465 with `SMTP_TLS=tls`, TCP | Only when mail is sent | Address confirmation and password reset | Leave `SMTP_HOST` empty for no mail |
 | Browser push services (the address each browser registered, for example the browser vendor's) | 443, TCP | When a member has Web Push on and a notification is due | Encrypted Web Push notifications. Only public `https://` addresses on port 443 are allowed | `PUSH_ENABLED=false` |
 | Websites members link to; `youtube.com`, `vimeo.com`, `store.steampowered.com` for rich previews | 80 and 443, TCP, public addresses only | When a message with a link is posted | Link previews and embeds | `LINK_PREVIEWS_ENABLED=false` |
