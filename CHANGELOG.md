@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.13](https://github.com/mnema-xyz/talk/compare/v3.3.12...v3.3.13) (2026-11-22)
+
+
+### Documentation
+
+* correct stale and wrong claims found in the docs audit ([#932](https://github.com/mnema-xyz/talk/issues/932)) ([f9bbf27](https://github.com/mnema-xyz/talk/commit/f9bbf27bda3ee1d8512b0a85d687c4e8dbf6e479))
+
 ## [3.3.12](https://github.com/mnema-xyz/talk/compare/v3.3.11...v3.3.12) (2026-11-22)
 
 
