@@ -58,6 +58,7 @@ audit.
 | [914](2026-11/914.md) | #914 | replies of a timed thread root end with it for every read and copy, display names without direction and invisible characters (also stored ones, migration 0111), a command's channel option needs the bot's view, a command restriction that cannot be stored is refused, a stored message keeps its file when the durability wait fails; two rounds |
 | [mnemo-39](2026-11/mnemo-39.md) | talk-mnemo-bot #39 | Mnemo's attachment reading: PDF extraction bounded in time, memory and length, a pixel limit, names in the consent prompt as plain text, refusals under the rate limits, no file text in thread memory; two rounds |
 | [bot-sdks-go-9-js-18](2026-11/bot-sdks-go-9-js-18.md) | bot-sdk-go #9, bot-sdk-js #18 | the bot token stays with the configured server (resume address, redirects), interaction tokens out of errors and logs, bounded answers; two rounds each |
+| [931](2026-11/931.md) | #931 | the test shard script excludes packages by Go pattern resolved with `go list` instead of a regex from the command line (CodeQL `js/regex-injection`); the CI shards stay the same |
 
 ## 2026-11: defect hunt on 3.0.8
 

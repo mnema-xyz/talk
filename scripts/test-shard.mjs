@@ -10,12 +10,13 @@
 // Usage:
 //   node scripts/test-shard.mjs run   <index>/<count> <package> [tags]
 //       prints the -run regex that selects this shard's tests
-//   node scripts/test-shard.mjs pkgs  <index>/<count> <exclude-regex>
+//   node scripts/test-shard.mjs pkgs  <index>/<count> <exclude-pattern>...
 //       prints the packages of this shard: every package of the module that
-//       the regex does not exclude, balanced by the seconds in
-//       scripts/test-shard-weights.json (a package missing there counts as
-//       DEFAULT_WEIGHT, so a new package is always tested)
-//   node scripts/test-shard.mjs check-pkgs <count> <exclude-regex>
+//       none of the Go package patterns (./internal/server, ./internal/chat/...)
+//       names, balanced by the seconds in scripts/test-shard-weights.json
+//       (a package missing there counts as DEFAULT_WEIGHT, so a new package is
+//       always tested)
+//   node scripts/test-shard.mjs check-pkgs <count> <exclude-pattern>...
 //       fails unless every package is in exactly one shard
 //   node scripts/test-shard.mjs check <count> <package> [tags]
 //       fails unless every test is in exactly one of the <count> shards
@@ -66,10 +67,22 @@ export function balance(items, weights, count) {
   return shards.map((s) => s.items.sort())
 }
 
+// without returns the packages of all that are not in excluded, compared as
+// exact import paths.
+export function without(all, excluded) {
+  const skip = new Set(excluded)
+  return all.filter((pkg) => !skip.has(pkg))
+}
+
+function goList(patterns) {
+  const out = execFileSync('go', ['list', '--', ...patterns], { encoding: 'utf8', maxBuffer: 64 << 20 })
+  return out.split('\n').map((l) => l.trim()).filter(Boolean)
+}
+
+// listPackages lets go list resolve the exclude patterns, so they mean what
+// they mean to go test and no argument is ever compiled into a regex.
 function listPackages(exclude) {
-  const out = execFileSync('go', ['list', './...'], { encoding: 'utf8', maxBuffer: 64 << 20 })
-  const skip = new RegExp(exclude)
-  return out.split('\n').map((l) => l.trim()).filter((l) => l && !skip.test(l))
+  return without(goList(['./...']), exclude.length > 0 ? goList(exclude) : [])
 }
 
 function loadWeights() {
@@ -127,9 +140,9 @@ function main(argv) {
     return
   }
   if (mode === 'pkgs' || mode === 'check-pkgs') {
-    const [spec, exclude] = rest
+    const [spec, ...exclude] = rest
     const m = /^(?:(\d+)\/)?(\d+)$/.exec(spec ?? '')
-    if (!m || exclude === undefined) throw new Error('usage: pkgs <index>/<count> <exclude-regex>')
+    if (!m) throw new Error('usage: pkgs <index>/<count> <exclude-pattern>...')
     const count = Number(m[2])
     const all = listPackages(exclude)
     const shards = balance(all, loadWeights(), count)
