@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.12](https://github.com/mnema-xyz/talk/compare/v3.3.11...v3.3.12) (2026-11-22)
+
+
+### Bug Fixes
+
+* exclude packages from the test shards by Go pattern, not regex ([#931](https://github.com/mnema-xyz/talk/issues/931)) ([ce19817](https://github.com/mnema-xyz/talk/commit/ce19817142283699b18dfbaa4c140d0ef9786b69))
+
 ## [3.3.11](https://github.com/mnema-xyz/talk/compare/v3.3.10...v3.3.11) (2026-11-21)
 
 
