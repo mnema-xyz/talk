@@ -1419,7 +1419,7 @@
     "level": "Level {level} % · Peak {peak} %",
     "threshold": "Threshold {value} %",
     "adviceTitle": "Tip for shared rooms",
-    "advice": "Ask the other person in the room to talk normally and watch the bar. Set the slider so their voice stays below the white line in the yellow zone (about 30 % to 45 %). When you speak, the bar swings green past the line and only your voice is sent.",
+    "advice": "Ask the other person in the room to talk normally and watch the bar. Drag the white line on the bar (the noise gate) so their voice stays below it in the yellow zone (about 30 % to 45 %). When you speak, the bar swings green past the line and only your voice is sent.",
     "processing": "Advanced voice processing",
     "agc": "Automatic gain control",
     "agcBadge": "Matters with two people",

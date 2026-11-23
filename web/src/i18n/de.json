@@ -1419,7 +1419,7 @@
     "level": "Pegel {level} % · Spitze {peak} %",
     "threshold": "Schwelle {value} %",
     "adviceTitle": "Tipp, wenn mehrere Personen im selben Raum sitzen",
-    "advice": "Lass eine zweite Person im Raum normal sprechen und beobachte die Leiste. Stell den Regler so ein, dass ihre Stimme unter dem weißen Strich im gelben Bereich bleibt (etwa 30 % bis 45 %). Sobald du sprichst, schlägt die Leiste grün über den Strich aus und nur deine Stimme wird gesendet.",
+    "advice": "Lass eine zweite Person im Raum normal sprechen und beobachte die Leiste. Zieh den weißen Strich auf der Leiste (das Noise Gate) so, dass ihre Stimme darunter im gelben Bereich bleibt (etwa 30 % bis 45 %). Sobald du sprichst, schlägt die Leiste grün über den Strich aus und nur deine Stimme wird gesendet.",
     "processing": "Erweiterte Sprachverarbeitung",
     "agc": "Automatische Lautstärkeregelung",
     "agcBadge": "Wichtig bei zwei Personen",
