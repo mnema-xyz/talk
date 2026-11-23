@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.14](https://github.com/mnema-xyz/talk/compare/v3.3.13...v3.3.14) (2026-11-23)
+
+
+### Bug Fixes
+
+* **audio:** the noise gate line on the level bar can be dragged ([#935](https://github.com/mnema-xyz/talk/issues/935)) ([dae248e](https://github.com/mnema-xyz/talk/commit/dae248e2a5e8e166331ca47699e8e7eafde56c73))
+
 ## [3.3.13](https://github.com/mnema-xyz/talk/compare/v3.3.12...v3.3.13) (2026-11-22)
 
 
