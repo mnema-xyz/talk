@@ -205,7 +205,7 @@ jobs:
           sh scripts/security-floor.sh --check-commits "$PR_RANGE"
 
       - if: ${{ needs.changes.outputs.code == 'true' }}
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         id: go
         with:
           go-version-file: go.mod
@@ -379,7 +379,7 @@ jobs:
           persist-credentials: false
 
       - if: ${{ needs.changes.outputs.code == 'true' }}
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         id: go
         with:
           go-version-file: go.mod
@@ -528,7 +528,7 @@ jobs:
           path: sdk/go
 
       - if: ${{ needs.changes.outputs.code == 'true' }}
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
           go-version-file: go.mod
           cache: false
@@ -593,7 +593,7 @@ jobs:
           persist-credentials: false
 
       - if: ${{ needs.changes.outputs.code == 'true' }}
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         id: go
         with:
           go-version-file: go.mod
@@ -695,7 +695,7 @@ jobs:
       # throwaway key and verify it, so a change that breaks the bundle (or
       # web/desktop-compat.json) fails here and not in the release workflow.
       - if: ${{ needs.changes.outputs.code == 'true' }}
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         id: go
         with:
           go-version-file: go.mod
@@ -923,7 +923,7 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         id: go
         with:
           go-version-file: go.mod
