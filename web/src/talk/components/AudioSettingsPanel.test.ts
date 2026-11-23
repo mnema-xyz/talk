@@ -28,9 +28,7 @@ vi.mock('../composables/useWebRTC', () => ({
 }))
 
 function meter(wrapper: ReturnType<typeof mount<typeof AudioSettingsPanel>>) {
-  const bar = wrapper.find('[role="meter"]')
-  const [fill, ...markers] = bar.findAll('div')
-  return { fill, threshold: markers.at(-1) }
+  return { fill: wrapper.find('[role="meter"]'), threshold: wrapper.find('[data-gate-marker]') }
 }
 
 describe('AudioSettingsPanel level meter', () => {
@@ -77,6 +75,50 @@ describe('AudioSettingsPanel level meter', () => {
     expect(requireValue(threshold).attributes('style')).toContain(`left: ${AUTO_THRESHOLD}%`)
     expect(requireValue(fill).classes()).toContain('bg-mnema-accent')
     expect(wrapper.text()).toContain('Pegel 40 %')
+  })
+})
+
+describe('AudioSettingsPanel noise gate handle', () => {
+  let voice!: ReturnType<typeof useVoiceStore>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    setActivePinia(createPinia())
+    voice = useVoiceStore()
+    voice.inputMode = 'activity'
+  })
+
+  it('makes the white line on the fine-tune bar a slider that sets the threshold', async () => {
+    voice.autoSensitivity = false
+    voice.sensitivityThreshold = 30
+    const wrapper = mount(AudioSettingsPanel, mountOpts)
+    const gate = wrapper.get('[data-testid="noise-gate"]')
+    expect(gate.attributes('type')).toBe('range')
+    expect((gate.element as HTMLInputElement).value).toBe('30')
+
+    await gate.setValue('62')
+    expect(voice.sensitivityThreshold).toBe(62)
+    expect(localStorage.getItem('mnema_sens_threshold')).toBe('62')
+    const markers = wrapper.findAll('[data-gate-marker]')
+    expect(requireValue(markers.at(-1)).attributes('style')).toContain('0.62')
+  })
+
+  it('stays movable with automatic sensitivity and switches it off when dragged', async () => {
+    voice.autoSensitivity = true
+    const wrapper = mount(AudioSettingsPanel, mountOpts)
+    const gate = wrapper.get('[data-testid="noise-gate"]')
+    expect((gate.element as HTMLInputElement).value).toBe(String(AUTO_THRESHOLD))
+
+    await gate.setValue('40')
+    expect(voice.autoSensitivity).toBe(false)
+    expect(voice.sensitivityThreshold).toBe(40)
+    expect(localStorage.getItem('mnema_auto_sens')).toBe('false')
+  })
+
+  it('leaves the microphone check bar read-only', () => {
+    const wrapper = mount(AudioSettingsPanel, mountOpts)
+    expect(wrapper.findAll('[data-testid="noise-gate"]')).toHaveLength(1)
   })
 })
 
@@ -368,7 +410,8 @@ describe('AudioSettingsPanel preference interactions', () => {
     await requireValue(wrapper.findAll('button').find(b => b.text().includes(t('audio.activity')))).trigger('click')
     await wrapper.get(`input[aria-label="${t('audio.sensitivity')}"]`).setValue(70); expect(voice.sensitivityThreshold).toBe(70)
     await wrapper.get('input[type="checkbox"]').setValue(true); expect(voice.autoSensitivity).toBe(true)
-    expect(wrapper.find(`input[aria-label="${t('audio.sensitivity')}"]`).exists()).toBe(false)
+    // The noise gate stays movable in auto mode (dragging it switches auto off).
+    expect(wrapper.find(`input[aria-label="${t('audio.sensitivity')}"]`).exists()).toBe(true)
     wrapper.unmount()
   })
   it('lets Tab and lone modifiers through, cancels recording on Escape and blur, and rolls the noise mode with the arrows', async () => {

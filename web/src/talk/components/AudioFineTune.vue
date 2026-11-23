@@ -6,11 +6,6 @@ import MicLevelMeter from './MicLevelMeter.vue'
 // How loud the microphone is and how loud you must be before it opens: the
 // part of the input that only matters when the basic check is not enough.
 const voiceStore = useVoiceStore()
-
-function handleSliderChange(e: Event) {
-  voiceStore.sensitivityThreshold = parseInt((e.target as HTMLInputElement).value, 10)
-  voiceStore.saveSettings()
-}
 </script>
 
 <template>
@@ -47,17 +42,8 @@ function handleSliderChange(e: Event) {
       </div>
       <p class="settings-hint">{{ $t('audio.sensitivityHint') }}</p>
 
-      <MicLevelMeter numbers />
-
-      <input
-        v-if="!voiceStore.autoSensitivity"
-        v-model="voiceStore.sensitivityThreshold"
-        type="range"
-        :aria-label="$t('audio.sensitivity')"
-        min="0"
-        max="100"
-        @input="handleSliderChange"
-      />
+      <!-- The white line on the bar is the noise gate: drag it (or use the arrow keys). -->
+      <MicLevelMeter numbers adjustable />
 
       <div class="flex gap-2 text-mnema-tertiary">
         <HelpCircle class="mt-0.5 h-4 w-4 shrink-0 text-mnema-mint" />
