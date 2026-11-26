@@ -9,6 +9,23 @@ export const AUTO_THRESHOLD = 25
 // How long the peak marker stays at the loudest recent level.
 export const PEAK_HOLD_MS = 1500
 
+/** Width of the gate handle. The line stays this far inside the bar, under the pointer. */
+export const GATE_THUMB_PX = 16
+
+/** CSS `left` of the gate line for a threshold of 0-100, centered on the pointer. */
+export function gateLineLeft(percent: number): string {
+  const inset = GATE_THUMB_PX / 2
+  return `calc(${inset}px + (100% - ${GATE_THUMB_PX}px) * ${percent / 100})`
+}
+
+/** Threshold 0-100 for a pointer at `clientX` over the level bar. */
+export function thresholdAt(clientX: number, bar: { left: number; width: number }): number {
+  const span = bar.width - GATE_THUMB_PX
+  if (span <= 0) return 0
+  const ratio = (clientX - bar.left - GATE_THUMB_PX / 2) / span
+  return Math.round(Math.min(100, Math.max(0, ratio * 100)))
+}
+
 /** The threshold the noise gate actually applies, as a number 0-100. */
 export interface ThresholdSettings {
   autoSensitivity: boolean

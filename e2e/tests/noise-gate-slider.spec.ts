@@ -42,22 +42,24 @@ test('the noise gate line on the level bar is dragged with the mouse, also in au
     const auto = advanced.getByRole('checkbox', { name: 'Automatisch anpassen' })
     await auto.check()
 
-    const gate = advanced.getByTestId('noise-gate')
-    const line = advanced.locator('[data-gate-marker]')
+    // The line next to the microphone check, the one in front of the mic test.
+    const meter = dialog.locator('[data-testid="mic-level"]').first()
+    const gate = meter.getByTestId('noise-gate')
+    const line = meter.locator('[data-gate-marker]')
     await gate.scrollIntoViewIfNeeded()
     await expect(line).toBeVisible()
 
     // Dragging the line in auto mode takes over by hand.
-    await dragLine(page, line, gate, 0.8)
+    await dragLine(page, line, meter, 0.8)
     await expect.poll(async () => Number(await gate.inputValue())).toBeGreaterThanOrEqual(75)
     await expect(auto).not.toBeChecked()
     await expect(advanced.getByText(/Schwelle \d+ %/)).toHaveText(`Schwelle ${await gate.inputValue()} %`)
 
     // The line followed the pointer, and it can be dragged back down.
-    await dragLine(page, line, gate, 0.2)
+    await dragLine(page, line, meter, 0.2)
     await expect.poll(async () => Number(await gate.inputValue())).toBeLessThanOrEqual(25)
     const lineBox = await line.boundingBox()
-    const barBox = await gate.boundingBox()
+    const barBox = await meter.boundingBox()
     if (!lineBox || !barBox) throw new Error('noise gate not laid out')
     expect(Math.abs(lineBox.x + lineBox.width / 2 - (barBox.x + 8 + (barBox.width - 16) * 0.2))).toBeLessThan(6)
 

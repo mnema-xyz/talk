@@ -62,7 +62,8 @@ async function handleDeviceChange() {
         </select>
       </div>
 
-      <MicLevelMeter />
+      <!-- The white line is the noise gate. Drag it here; the same line in Fine-tune follows. -->
+      <MicLevelMeter adjustable />
 
       <!-- The test: prominent, with what it does in one line -->
       <div class="flex flex-col gap-3 rounded-lg border border-mnema-hairline bg-mnema-canvas/50 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-5">

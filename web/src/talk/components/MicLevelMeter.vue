@@ -1,26 +1,68 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref, shallowRef, watch } from 'vue'
 import { useVoiceStore } from '../../stores/voice'
-import { effectiveThreshold, createPeakHold } from '../lib/levelMeter'
+import { effectiveThreshold, createPeakHold, gateLineLeft, thresholdAt } from '../lib/levelMeter'
 
 // The microphone level bar: amber below the threshold (not transmitted), green
 // above it (transmitted), with the loudest recent level marked. With
-// `adjustable` the white threshold line is the noise gate's handle: the whole
-// bar is a slider, so the line can be dragged (or moved with the arrow keys).
-// Moving it by hand switches automatic sensitivity off.
+// `adjustable` the white threshold line is the noise gate's handle. The bar
+// follows the pointer for the whole press (a native range thumb only moves
+// when the press starts on the thumb, so a click on the line and a drag did
+// nothing). Arrow keys use the range underneath. Moving it by hand switches
+// automatic sensitivity off.
 const props = defineProps<{ numbers?: boolean; adjustable?: boolean }>()
 const voiceStore = useVoiceStore()
+const dragging = shallowRef(false)
 
-function setThreshold(e: Event) {
-  const value = parseInt((e.target as HTMLInputElement).value, 10)
-  if (Number.isNaN(value)) return
+function commitThreshold(value: number) {
+  if (!voiceStore.autoSensitivity && voiceStore.sensitivityThreshold === value) return
   voiceStore.autoSensitivity = false
   voiceStore.sensitivityThreshold = value
   voiceStore.saveSettings()
 }
 
+// The line is positioned in the padding box. The border sits outside that.
+function pointerBox(el: HTMLElement): { left: number; width: number } {
+  const rect = el.getBoundingClientRect()
+  const style = getComputedStyle(el)
+  const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0
+  const borderRight = Number.parseFloat(style.borderRightWidth) || 0
+  return { left: rect.left + borderLeft, width: Math.max(0, rect.width - borderLeft - borderRight) }
+}
+
+function setThreshold(e: Event) {
+  const value = parseInt((e.target as HTMLInputElement).value, 10)
+  if (Number.isNaN(value)) return
+  commitThreshold(value)
+}
+
+function onPointerDown(e: PointerEvent) {
+  if (!props.adjustable || e.button !== 0 || !e.isPrimary) return
+  const el = e.currentTarget as HTMLElement
+  dragging.value = true
+  try { el.setPointerCapture(e.pointerId) } catch { /* move events still reach the bar while the pointer is over it */ }
+  e.preventDefault()
+  commitThreshold(thresholdAt(e.clientX, pointerBox(el)))
+  el.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
+}
+
+function onPointerMove(e: PointerEvent) {
+  if (!dragging.value) return
+  // A move with no button held means the release was missed. Do not keep dragging.
+  if (e.buttons === 0) {
+    dragging.value = false
+    return
+  }
+  commitThreshold(thresholdAt(e.clientX, pointerBox(e.currentTarget as HTMLElement)))
+}
+
+function endDrag() {
+  dragging.value = false
+}
+
 // The marker shows what the gate really uses (auto mode ignores the slider).
 const threshold = computed(() => effectiveThreshold(voiceStore))
+const lineLeft = computed(() => props.adjustable ? gateLineLeft(threshold.value) : `${threshold.value}%`)
 const isAboveThreshold = computed(() => voiceStore.currentInputLevel >= threshold.value)
 
 const peakHold = createPeakHold()
@@ -34,8 +76,14 @@ defineExpose({ peakLevel, threshold })
 <template>
   <div class="stack-2">
     <div
+      data-testid="mic-level"
       class="relative flex h-9 items-center overflow-hidden rounded-lg border border-mnema-border bg-mnema-canvas p-1"
       :class="props.adjustable && 'mic-gate'"
+      @pointerdown="onPointerDown"
+      @pointermove="onPointerMove"
+      @pointerup="endDrag"
+      @pointercancel="endDrag"
+      @lostpointercapture="endDrag"
     >
       <!-- The meter role sits on the level itself, so the slider is not nested inside a meter -->
       <div
@@ -62,11 +110,12 @@ defineExpose({ peakLevel, threshold })
         data-gate-marker
         class="pointer-events-none absolute top-0 bottom-0 z-10 w-1 bg-white shadow-lg motion-reduce:transition-none"
         :class="props.adjustable ? 'mic-gate-handle -translate-x-1/2' : 'transition-[left]'"
-        :style="{ left: props.adjustable ? `calc(8px + (100% - 16px) * ${threshold / 100})` : `${threshold}%` }"
+        :style="{ left: lineLeft }"
       ></div>
 
-      <!-- The bar itself is the noise gate slider: an invisible native range over it, so
-           mouse, touch and keyboard all move the white line. -->
+      <!-- Keyboard and assistive tech. The pointer is handled by the bar: this
+           input stays out of hit testing, because a native range does not follow
+           a drag that starts on the track. -->
       <input
         v-if="props.adjustable"
         type="range"
@@ -93,23 +142,16 @@ defineExpose({ peakLevel, threshold })
 </template>
 
 <style scoped>
-/* The native slider stays in the layout for input but is not drawn; the white
-   line above is its handle. The thumb is 16px wide, so the line is placed at
-   8px + (100% - 16px) * value to sit exactly under the pointer. */
+/* The range stays in the tree for the keyboard and is not a hit target. */
 .mic-gate-input {
   height: 100%;
   opacity: 0;
-  cursor: ew-resize;
-  touch-action: none;
+  pointer-events: none;
 }
-.mic-gate-input::-webkit-slider-runnable-track { height: 100%; }
-.mic-gate-input::-webkit-slider-thumb { height: 100%; margin-top: 0; }
-.mic-gate-input::-moz-range-track { height: 100%; }
-.mic-gate-input::-moz-range-thumb { height: 100%; }
-.mic-gate { cursor: ew-resize; }
+.mic-gate { cursor: ew-resize; touch-action: none; user-select: none; }
 .mic-gate-handle { width: 4px; border-radius: 2px; }
-.mic-gate:has(.mic-gate-input:hover) .mic-gate-handle,
-.mic-gate:has(.mic-gate-input:active) .mic-gate-handle { width: 6px; }
+.mic-gate:hover .mic-gate-handle,
+.mic-gate:active .mic-gate-handle { width: 6px; }
 .mic-gate:has(.mic-gate-input:focus-visible) {
   outline: 2px solid var(--color-mnema-accent);
   outline-offset: 2px;
