@@ -72,7 +72,7 @@ describe('AudioSettingsPanel level meter', () => {
     await nextTick()
 
     const { fill, threshold } = meter(wrapper)
-    expect(requireValue(threshold).attributes('style')).toContain(`left: ${AUTO_THRESHOLD}%`)
+    expect(requireValue(threshold).attributes('style')).toContain(`* ${AUTO_THRESHOLD / 100})`)
     expect(requireValue(fill).classes()).toContain('bg-mnema-accent')
     expect(wrapper.text()).toContain('Pegel 40 %')
   })
@@ -93,7 +93,7 @@ describe('AudioSettingsPanel noise gate handle', () => {
     voice.autoSensitivity = false
     voice.sensitivityThreshold = 30
     const wrapper = mount(AudioSettingsPanel, mountOpts)
-    const gate = wrapper.get('[data-testid="noise-gate"]')
+    const gate = wrapper.get('[data-testid="audio-advanced"] [data-testid="noise-gate"]')
     expect(gate.attributes('type')).toBe('range')
     expect((gate.element as HTMLInputElement).value).toBe('30')
 
@@ -107,7 +107,7 @@ describe('AudioSettingsPanel noise gate handle', () => {
   it('stays movable with automatic sensitivity and switches it off when dragged', async () => {
     voice.autoSensitivity = true
     const wrapper = mount(AudioSettingsPanel, mountOpts)
-    const gate = wrapper.get('[data-testid="noise-gate"]')
+    const gate = wrapper.get('[data-testid="audio-advanced"] [data-testid="noise-gate"]')
     expect((gate.element as HTMLInputElement).value).toBe(String(AUTO_THRESHOLD))
 
     await gate.setValue('40')
@@ -116,9 +116,24 @@ describe('AudioSettingsPanel noise gate handle', () => {
     expect(localStorage.getItem('mnema_auto_sens')).toBe('false')
   })
 
-  it('leaves the microphone check bar read-only', () => {
+  it('drags the noise gate on the microphone check bar with the held pointer', async () => {
+    voice.autoSensitivity = true
+    voice.sensitivityThreshold = 80
     const wrapper = mount(AudioSettingsPanel, mountOpts)
-    expect(wrapper.findAll('[data-testid="noise-gate"]')).toHaveLength(1)
+    const bar = wrapper.findAll('[data-testid="mic-level"]')[0]
+    expect(bar).toBeDefined()
+    const el = requireValue(bar).element as HTMLElement
+    el.getBoundingClientRect = () => ({ left: 100, top: 0, width: 216, height: 36, right: 316, bottom: 36, x: 100, y: 0, toJSON: () => ({}) }) as DOMRect
+    await requireValue(bar).trigger('pointerdown', { button: 0, buttons: 1, isPrimary: true, clientX: 208, pointerId: 1 })
+    expect(voice.autoSensitivity).toBe(false)
+    expect(voice.sensitivityThreshold).toBe(50)
+    await requireValue(bar).trigger('pointermove', { buttons: 1, clientX: 308, pointerId: 1 })
+    expect(voice.sensitivityThreshold).toBe(100)
+    await requireValue(bar).trigger('pointerup', { pointerId: 1 })
+    await requireValue(bar).trigger('pointermove', { buttons: 1, clientX: 108, pointerId: 1 })
+    expect(voice.sensitivityThreshold).toBe(100)
+    await requireValue(bar).trigger('pointerdown', { button: 2, isPrimary: true, clientX: 108, pointerId: 2 })
+    expect(voice.sensitivityThreshold).toBe(100)
   })
 })
 
@@ -408,10 +423,12 @@ describe('AudioSettingsPanel preference interactions', () => {
     await record.trigger('keydown', { key: 'z', code: 'KeyZ' }); expect(voice.pttKey).toBe('KeyF')
     await record.trigger('click'); await record.trigger('keydown', { key: 'x', code: '' }); expect(voice.pttKey).toBe('x')
     await requireValue(wrapper.findAll('button').find(b => b.text().includes(t('audio.activity')))).trigger('click')
-    await wrapper.get(`input[aria-label="${t('audio.sensitivity')}"]`).setValue(70); expect(voice.sensitivityThreshold).toBe(70)
+    const gates = wrapper.findAll(`input[aria-label="${t('audio.sensitivity')}"]`)
+    expect(gates).toHaveLength(2)
+    await requireValue(gates[0]).setValue(70); expect(voice.sensitivityThreshold).toBe(70)
     await wrapper.get('input[type="checkbox"]').setValue(true); expect(voice.autoSensitivity).toBe(true)
     // The noise gate stays movable in auto mode (dragging it switches auto off).
-    expect(wrapper.find(`input[aria-label="${t('audio.sensitivity')}"]`).exists()).toBe(true)
+    expect(gates[0]!.exists()).toBe(true)
     wrapper.unmount()
   })
   it('lets Tab and lone modifiers through, cancels recording on Escape and blur, and rolls the noise mode with the arrows', async () => {

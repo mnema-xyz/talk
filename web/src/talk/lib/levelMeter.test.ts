@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { VoiceGateSettings } from './levelMeter'
-import { effectiveThreshold, createPeakHold, createVoiceGate, AUTO_THRESHOLD, PEAK_HOLD_MS } from './levelMeter'
+import { effectiveThreshold, createPeakHold, createVoiceGate, thresholdAt, gateLineLeft, AUTO_THRESHOLD, PEAK_HOLD_MS } from './levelMeter'
 
 describe('effectiveThreshold', () => {
   it('uses the fixed auto value when auto sensitivity is on', () => {
@@ -9,6 +9,26 @@ describe('effectiveThreshold', () => {
 
   it('uses the slider value otherwise, also when stored as a string', () => {
     expect(effectiveThreshold({ autoSensitivity: false, sensitivityThreshold: '62' })).toBe(62)
+  })
+})
+
+describe('thresholdAt', () => {
+  const bar = { left: 100, width: 216 }
+
+  it('puts the pointer on the gate line, and clamps at the ends', () => {
+    expect(thresholdAt(108, bar)).toBe(0)
+    expect(thresholdAt(208, bar)).toBe(50)
+    expect(thresholdAt(308, bar)).toBe(100)
+    expect(thresholdAt(0, bar)).toBe(0)
+    expect(thresholdAt(400, bar)).toBe(100)
+  })
+
+  it('reports zero when the bar is narrower than the handle', () => {
+    expect(thresholdAt(50, { left: 0, width: 10 })).toBe(0)
+  })
+
+  it('places the line on the same scale', () => {
+    expect(gateLineLeft(50)).toBe('calc(8px + (100% - 16px) * 0.5)')
   })
 })
 
