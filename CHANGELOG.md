@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.16](https://github.com/mnema-xyz/talk/compare/v3.3.15...v3.3.16) (2026-11-26)
+
+
+### Bug Fixes
+
+* **audio:** drag the noise gate for the whole press ([3e07715](https://github.com/mnema-xyz/talk/commit/3e077152770b4dd63e8ec218394c82b15bc242f2))
+
 ## [3.3.15](https://github.com/mnema-xyz/talk/compare/v3.3.14...v3.3.15) (2026-11-26)
 
 
