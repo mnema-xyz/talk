@@ -79,8 +79,8 @@ modules are compiled into `mnema-talk`:
 |---|---|---|
 | `github.com/SherClockHolmes/webpush-go` | v1.4.0 | MIT |
 | `github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream` | v1.7.27 | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/config` | v1.33.18 | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/credentials` | v1.21.0 | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/config` | v1.33.19 | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/credentials` | v1.21.1 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/feature/ec2/imds` | v1.20.9 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/internal/configsources` | v1.5.12 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/internal/endpoints/v2` | v2.8.12 | Apache-2.0 |
@@ -89,7 +89,7 @@ modules are compiled into `mnema-talk`:
 | `github.com/aws/aws-sdk-go-v2/service/internal/checksum` | v1.11.13 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/service/internal/presigned-url` | v1.14.12 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/service/internal/s3shared` | v1.20.12 | Apache-2.0 |
-| `github.com/aws/aws-sdk-go-v2/service/s3` | v1.114.10 | Apache-2.0 |
+| `github.com/aws/aws-sdk-go-v2/service/s3` | v1.115.0 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/service/signin` | v1.13.1 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/service/sso` | v1.39.5 | Apache-2.0 |
 | `github.com/aws/aws-sdk-go-v2/service/ssooidc` | v1.44.5 | Apache-2.0 |
@@ -124,7 +124,7 @@ modules are compiled into `mnema-talk`:
 | `github.com/wlynxg/anet` | v0.0.5 | BSD-3-Clause |
 | `golang.org/x/crypto` | v0.59.0 | BSD-3-Clause |
 | `golang.org/x/image` | v0.48.0 | BSD-3-Clause |
-| `golang.org/x/net` | v0.62.0 | BSD-3-Clause |
+| `golang.org/x/net` | v0.63.0 | BSD-3-Clause |
 | `golang.org/x/sync` | v0.25.0 | BSD-3-Clause |
 | `golang.org/x/sys` | v0.50.0 | BSD-3-Clause |
 | `golang.org/x/text` | v0.44.0 | BSD-3-Clause |
