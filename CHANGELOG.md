@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.15](https://github.com/mnema-xyz/talk/compare/v3.3.14...v3.3.15) (2026-11-26)
+
+
+### Bug Fixes
+
+* **deps:** gorilla/websocket to the crypto/rand mask-key commit (GO-2026-6278) ([#940](https://github.com/mnema-xyz/talk/issues/940)) ([d7e2640](https://github.com/mnema-xyz/talk/commit/d7e26402844e79072960395645773548d5f0ccf2))
+
 ## [3.3.14](https://github.com/mnema-xyz/talk/compare/v3.3.13...v3.3.14) (2026-11-23)
 
 
