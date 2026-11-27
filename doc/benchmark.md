@@ -1,16 +1,43 @@
 # Benchmark
 
-A capacity measurement of Mnema Talk 2.2.0 on a small home server, repeated on
-3.3.0 (see [Repeat on 3.3.0](#repeat-on-330)). It answers
-one question: how much of a low-power machine do chat and voice use at a given
-number of members? It is a single run on a single host, so read the figures as
-orders of magnitude, not as a guarantee.
+This page holds the capacity measurements of Mnema Talk on a small home server.
+It answers one question: how much of a low-power machine do chat and voice use
+at a given number of members? Each series is a single run on a single host, so
+read the figures as orders of magnitude, not as a guarantee.
+
+**Every table and section names the server version it measures.** The sections
+are in order of the measurements' versions, newest first. Older measurements
+stay on this page as history and are labelled as such. A number from one version
+is never carried over to another without saying so.
+
+| Version measured | Section | Status |
+|---|---|---|
+| 3.3.9 (the same build with and without the change) | [The mixed Talk holds: the socket's write lock](#the-mixed-talk-holds-the-sockets-write-lock) | Latest measurement |
+| 3.3.3 and 2.2.0; the chat lock fix (released in 3.3.5) | [Same generator, both versions](#same-generator-both-versions) | Comparison |
+| 3.3.0 (and 2.2.0 for comparison) | [Repeat on 3.3.0](#repeat-on-330) | Full repeat of the six scenarios |
+| 2.6.0 | [Opus DTX (2.6.0)](#opus-dtx-260) | Emulated talk pattern |
+| 2.4.0 and 2.5.0 | [Sizing guide](#sizing-guide) | Basis of the sizing table and the Admin > Status panel |
+| 2.2.0 | [Results on 2.2.0 (history)](#results-on-220-history) | History: the first run |
+
+## Summary
+
+- **3.3.9:** the mixed Talk (100 members, one screen, ten cameras, three
+  speakers) that did not hold on 3.3.0 holds with no loss at about 1.9 cores.
+  Without the change, the same build lost 76.5 % of the screen's packets at
+  about 1.4 cores.
+- **3.3.0:** 1,000 chat sessions used 0.65 cores and 107 MB. One screen shared
+  to 100 members used 0.56 cores and 181 MB directly, and 1.34 cores and 192 MB
+  through the relay.
+- **2.2.0 (history, first run):** 1,000 chat sessions used about two thirds of a
+  core and 100 MB, and delivered every event within 190 ms. One screen shared to
+  100 members used about half a core directly and 1.6 cores through the relay.
+  The mixed Talk did not hold.
 
 ## Test system
 
 | | |
 |---|---|
-| Server version | 2.2.0 (the published container image) |
+| Server version | Named in each section; the published container image of that version |
 | CPU | Intel N100, 4 cores, no hyper-threading |
 | Memory | 16 GB |
 | Storage | NVMe SSD (btrfs cache pool); PostgreSQL and the application data live on it |
@@ -18,7 +45,7 @@ orders of magnitude, not as a guarantee.
 | Container runtime | Docker 29.8.2, the repository's `docker-compose.yml` (application, PostgreSQL 18, SeaweedFS) |
 | Application memory limit | the default `APP_MEM_LIMIT=1g` |
 | Network | loopback: the load generator ran on the same machine |
-| Other load | one real member was online during the run; the instance was otherwise idle |
+| Other load | first run (2.2.0): one real member was online during the run; the instance was otherwise idle. Later runs state their own setup. |
 
 ## Method
 
@@ -51,73 +78,95 @@ Each scenario held for two minutes after connecting. Voice media is synthetic
 (valid packets sized to the bitrate, keyframes every three seconds); nothing is
 captured, encoded or decoded.
 
-## Results
+## The mixed Talk holds: the socket's write lock
 
-### Chat
+Measured on server 3.3.9. "Before" is the same commit without the change, "after" with it.
 
-Delivery latency is over all receiving sessions, so the 1,000-session run is
-2.36 million measured deliveries. No message, edit or reaction was lost or
-duplicated in any run, and no send request failed.
+The loss of the mixed shape at the server's ingress had one cause: the
+server's own UDP socket. Every member's media leaves through the SFU's one
+shared port, and Go lets one write at a time go through a socket for the whole
+system call. On this host a send costs about 14 µs, so the socket carried at
+most about 45,000 packets a second; the forwarding goroutines of all tracks
+queued on its lock (all 14 of them, in every goroutine dump of the run), read
+their publishers more slowly than they sent, and the tracks' receive buffers
+overflowed. Those packets were dropped before the server counted them, which
+is why the loss showed at the ingress while a third of the CPU was idle and the
+kernel counted no drops. A counter for these drops was added in the same
+change: `mnema_sfu_ingress_dropped_total{reason="buffer"}` (35,265 in the run
+before the fix).
 
-| Sessions | Writers | Messages p50 / p95 / p99 | Edits p95 | Reactions p95 | Loss | Server CPU (hold / peak) | Server memory (peak) |
-|---------:|--------:|-------------------------:|----------:|--------------:|-----:|-------------------------:|---------------------:|
-| 100 | 10 | 12 / 18 / 26 ms | 30 ms | 13 ms | 0 % | 0.02 / 0.02 cores | 47 MB |
-| 300 | 30 | 14 / 21 / 44 ms | 29 ms | 15 ms | 0 % | 0.09 / 0.10 cores | 62 MB |
-| 1,000 | 100 | 33 / 84 / 115 ms | 147 ms | 65 ms | 0 % | 0.67 / 0.70 cores | 102 MB |
+Since the fix the SFU's port and the built-in relay's port send from all
+goroutines at once. This direct path exists on Linux only (the container image); other platforms keep Go's one-at-a-time path (see `internal/fastudp`). Same host, same throwaway
+stack and generator, server built from the same commit with and without the
+fix, one run each with a 120 s hold:
 
-Connecting took 20 ms at most per session. Goroutines returned to their
-starting value (about 60) after every run.
+| Shape (100 members) | Version | Screen loss | Camera loss | Egress in the window | Server CPU (hold) | Generator |
+|---|---|---:|---:|---:|---:|---:|
+| screen, 10 cameras at 300 kbit/s, 3 speakers | before | 76.5 % | 11.8 % | 4.35 M packets | 1.38 cores | 1.19 cores |
+| | after | 0.00 % | 0.00 % | 8.92 M packets | 1.91 cores | 1.42 cores |
+| screen, 4 cameras at 1 Mbit/s, 3 speakers | before | 64.4 % | 49.5 % | 4.48 M packets | 1.38 cores | 1.17 cores |
+| | after | 0.00 % | 0.00 % | 8.99 M packets | 1.91 cores | 1.40 cores |
+| screen and 3 speakers, all through the relay | before | 0.00 % | | 3.56 M packets | 1.31 cores | 0.80 cores |
+| | after | 0.00 % | | 3.55 M packets | 1.24 cores | 0.71 cores |
 
-### Voice, direct
+The server now sends twice the packets for 40 % more CPU: about 24 µs per
+packet instead of 35. Audio lost nothing in any run. The relay shape was not
+limited by the lock and is unchanged within noise; its flap in the 2.2.0 and 3.3.0
+runs did not occur in either run.
 
-99 members received one screen at 1500 kbit/s.
+The next limit is the CPU itself. With 120 members (screen, 10 cameras, 3
+speakers) the server used 2.23 cores, the generator 1.46 and the host was 88 %
+busy; the screen then lost 22 % of its packets, again in the tracks' receive
+buffers. About half of the server's CPU in these runs is the kernel's send path
+(the system call itself), the rest mostly Pion's per-packet interceptors;
+encryption is about 5 %.
 
-| Members | Received per member | Loss | Freezes | Connect p50 / p95 | First video p50 / p95 | Server CPU (hold / peak) | Server memory (peak) |
-|--------:|--------------------:|-----:|--------:|------------------:|----------------------:|-------------------------:|---------------------:|
-| 100 | 1585 kbit/s (1532 to 1631) | 0.00 % | 0 | 31 / 55 ms | 66 / 374 ms | 0.56 / 0.73 cores | 312 MB |
+## Same generator, both versions
 
-Longest gap in any member's video: 67 ms. The generator used 0.54 cores.
+Measured on servers 2.2.0 and 3.3.3 with the same load generator, and on builds
+with and without the channel lock fix (released in 3.3.5).
 
-### Voice, through the built-in TURN relay
+The chat run with 1,000 sessions was repeated on 2.2.0 and on 3.3.3 back to back,
+with the same (current) load generator, on a throwaway stack on the same host
+(fresh database for each; one run each, so differences of a few percent are
+noise). This separates the change in the server from the change in the
+generator.
 
-| Members | Through the relay | Screen per member | Audio per member | Loss | Freezes | Connect p50 / p95 | Server CPU (hold / peak) | Server memory (peak) |
-|--------:|------------------:|------------------:|-----------------:|-----:|--------:|------------------:|-------------------------:|---------------------:|
-| 100 | 100 of 100 | 1601 kbit/s | 119 kbit/s (3 speakers) | 0.00 % | 1 member, one 12.6 s gap | 1038 / 1058 ms | 1.61 / 1.67 cores | 312 MB |
+| Version | Messages p50 / p95 / p99 / max | Server CPU (hold) | Memory (peak) | Loss |
+|---|---|---:|---:|---:|
+| 2.2.0 | 31 / 75 / 98 / 153 ms | 0.63 cores | 90 MB | 0 % |
+| 3.3.3 | 38 / 120 / 196 / 345 ms | 0.64 cores | 99 MB | 0 % |
 
-One member lost its connection once (a "flap") and was frozen for 12.6 seconds
-before it recovered; the scenario's threshold allows no flaps, so it is
-recorded as failed although the other 99 members saw no freeze. The generator
-used 0.82 cores. About 3.3 GB left the server in the two minutes.
+With the same generator, 3.3.3 delivers about 60 % slower at p95 and twice as
+slow at p99 than 2.2.0, at the same CPU and about 10 % more memory; nothing is
+lost. All deliveries still arrive within 350 ms. The 2.2.0 figures with the
+newer generator (75 / 98 ms) are slightly better than those of the first run
+(84 / 115 ms), so part of the gap in the 3.3.0 table below comes from the
+generator and the shared host.
 
-### Voice, mixed (does not hold)
+The cause of the remaining difference was the channel's lock. Since 3.0.10
+(migration 0104) a post holds its channel's row from the number it draws to its
+commit, so that `GET /api/read-state` can say exactly which messages its counts
+include. Every post in the busy channel queued for it, and the lock was held
+for 18 round trips to the database and through the WAL flush (about 5 ms on
+this host's disk). Timing spans in the server on this host showed a median
+hold of 13 to 15 ms and a wait for the lock of up to 110 ms (p99); the fan-out
+itself took under 20 ms (p99). The fix commits the post asynchronously and
+waits for the flush afterwards, before anybody hears of the message (concurrent
+posts share it), and holds the lock for 7 round trips. The same run, two of
+each back to back on fresh stacks:
 
-One screen, 10 cameras and 3 speakers, every member watching everything:
-roughly 4.5 Mbit/s of video per member, 450 Mbit/s in total out of one machine
-that also runs the generator.
+| Version | Messages p50 / p95 / p99 / max | Server CPU (hold) | Memory (peak) | Loss |
+|---|---|---:|---:|---:|
+| 3.3.3 | 37 / 122 / 213 / 443 ms, 38 / 116 / 179 / 333 ms | 0.65 cores | 98 to 102 MB | 0 % |
+| with the fix | 33 / 79 / 113 / 186 ms, 32 / 83 / 117 / 201 ms | 0.63 to 0.64 cores | 100 to 101 MB | 0 % |
 
-| Members | Screen received | Camera received (per track) | Screen loss | Camera loss | Audio loss | Server CPU (hold / peak) | Server memory (peak) |
-|--------:|----------------:|----------------------------:|------------:|------------:|-----------:|-------------------------:|---------------------:|
-| 100 | 200 kbit/s of 1500 | 134 kbit/s of 300 | 81.6 % | 33.5 % | 0.3 % | 1.87 / 2.06 cores | 1044 MB |
-
-All members connected and none timed out, but most of the video did not arrive.
-The server used about two cores and reached the 1 GB memory limit, and the
-generator used 0.97 cores, so on this machine the run is limited by the shared
-host. We did not determine whether the server, the generator or the loopback
-path was the first bottleneck. Goroutines and heap returned to their starting
-values afterwards, so there is no leak.
-
-## What this shows
-
-- Chat is cheap: 1,000 concurrent sessions used about two thirds of a core and
-  100 MB, and delivered every event within 190 ms.
-- One screen share to about 100 members used about half a core directly and
-  about 1.6 cores through the relay.
-- A Talk in which 100 members watch ten cameras and a screen at the same time
-  was beyond this machine up to 3.3; since the SFU sends from all goroutines at
-  once it holds with no loss at about 1.9 cores
-  ([the socket's write lock](#the-mixed-talk-holds-the-sockets-write-lock)).
+p95 and p99 drop by about a third and come within 10 to 20 % of 2.2.0; the
+lock's ordering guarantee is kept.
 
 ## Repeat on 3.3.0
+
+Measured on server 3.3.0, compared with the first run on 2.2.0.
 
 The six scenarios were run again on server 3.3.0 (the published container
 image, pinned by digest), with the same settings and the same host as above.
@@ -154,7 +203,8 @@ run (not recorded for 2.2.0 except for the relay).
   failed, it connected without the relay and was frozen for 43 s (before: one
   member, 12.6 s). The other 99 members saw no freeze. Both runs show one
   flap in 100 members; we did not investigate the cause.
-- **Mixed** still does not hold on this host: the screen loses 77 % of its
+- **Mixed** did not hold on this host in this run (the cause was found and fixed
+  in 3.3.9, see [the socket's write lock](#the-mixed-talk-holds-the-sockets-write-lock)): the screen loses 77 % of its
   packets and the cameras 13 %, with the generator at 1.17 cores. The loss is
   again at the server's ingress (generator sent 90,143 packets, the server
   counted 42,506), none after the server. CPU is 27 % lower and memory 59 %
@@ -165,88 +215,39 @@ run (not recorded for 2.2.0 except for the relay).
 - No goroutine leak: goroutines returned to 40 to 48 after every scenario, and
   the database fingerprint matched before and after.
 
-### Same generator, both versions
+## Opus DTX (2.6.0)
 
-The chat run with 1,000 sessions was repeated on 2.2.0 and on 3.3.3 back to back,
-with the same (current) load generator, on a throwaway stack on the same host
-(fresh database for each; one run each, so differences of a few percent are
-noise). This separates the change in the server from the change in the
-generator.
+Measured on server 2.6.0.
 
-| Version | Messages p50 / p95 / p99 / max | Server CPU (hold) | Memory (peak) | Loss |
-|---|---|---:|---:|---:|
-| 2.2.0 | 31 / 75 / 98 / 153 ms | 0.63 cores | 90 MB | 0 % |
-| 3.3.3 | 38 / 120 / 196 / 345 ms | 0.64 cores | 99 MB | 0 % |
+Server 2.6.0 turns on Opus discontinuous transmission for the microphone, so a
+member who is not speaking sends about five small packets a second instead of
+fifty. The load generator can emulate this (`AUDIO_DTX=1`, with `AUDIO_TALK_PCT`
+the share of time each speaker talks); it sends a 16-byte frame every 200 ms
+while a speaker is silent, which is what Chrome sends. Two cells, 10 speakers
+and the rest of the members listening, each run twice with a 120 s hold, with
+speakers talking 30 % of the time:
 
-With the same generator, 3.3.3 delivers about 60 % slower at p95 and twice as
-slow at p99 than 2.2.0, at the same CPU and about 10 % more memory; nothing is
-lost. All deliveries still arrive within 350 ms. The 2.2.0 figures with the
-newer generator (75 / 98 ms) are slightly better than those of the first run
-(84 / 115 ms), so part of the gap in the 3.3.0 table above comes from the
-generator and the shared host.
+| Members | DTX | Egress packets/s | Server CPU (cores) | Audio loss |
+|---:|---|---:|---:|---:|
+| 100 | off | 58,614 | 1.31 | 0 % |
+| 100 | on, 30 % talk time | 22,372 | 0.58 | 0 % |
+| 50 | off | 28,216 | 0.67 | 0 % |
+| 50 | on, 30 % talk time | 10,443 | 0.28 | 0 % |
 
-The cause of the remaining difference was the channel's lock. Since 3.0.10
-(migration 0104) a post holds its channel's row from the number it draws to its
-commit, so that `GET /api/read-state` can say exactly which messages its counts
-include. Every post in the busy channel queued for it, and the lock was held
-for 18 round trips to the database and through the WAL flush (about 5 ms on
-this host's disk). Timing spans in the server on this host showed a median
-hold of 13 to 15 ms and a wait for the lock of up to 110 ms (p99); the fan-out
-itself took under 20 ms (p99). The fix commits the post asynchronously and
-waits for the flush afterwards, before anybody hears of the message (concurrent
-posts share it), and holds the lock for 7 round trips. The same run, two of
-each back to back on fresh stacks:
-
-| Version | Messages p50 / p95 / p99 / max | Server CPU (hold) | Memory (peak) | Loss |
-|---|---|---:|---:|---:|
-| 3.3.3 | 37 / 122 / 213 / 443 ms, 38 / 116 / 179 / 333 ms | 0.65 cores | 98 to 102 MB | 0 % |
-| with the fix | 33 / 79 / 113 / 186 ms, 32 / 83 / 117 / 201 ms | 0.63 to 0.64 cores | 100 to 101 MB | 0 % |
-
-p95 and p99 drop by about a third and come within 10 to 20 % of 2.2.0; the
-lock's ordering guarantee is kept.
-
-### The mixed Talk holds: the socket's write lock
-
-The loss of the mixed shape at the server's ingress had one cause: the
-server's own UDP socket. Every member's media leaves through the SFU's one
-shared port, and Go lets one write at a time go through a socket for the whole
-system call. On this host a send costs about 14 µs, so the socket carried at
-most about 45,000 packets a second; the forwarding goroutines of all tracks
-queued on its lock (all 14 of them, in every goroutine dump of the run), read
-their publishers more slowly than they sent, and the tracks' receive buffers
-overflowed. Those packets were dropped before the server counted them, which
-is why the loss showed at the ingress while a third of the CPU was idle and the
-kernel counted no drops. A counter for these drops was added in the same
-change: `mnema_sfu_ingress_dropped_total{reason="buffer"}` (35,265 in the run
-before the fix).
-
-Since the fix the SFU's port and the built-in relay's port send from all
-goroutines at once. This direct path exists on Linux only (the container image); other platforms keep Go's one-at-a-time path (see `internal/fastudp`). Same host, same throwaway
-stack and generator, server built from the same commit with and without the
-fix, one run each with a 120 s hold:
-
-| Shape (100 members) | Version | Screen loss | Camera loss | Egress in the window | Server CPU (hold) | Generator |
-|---|---|---:|---:|---:|---:|---:|
-| screen, 10 cameras at 300 kbit/s, 3 speakers | before | 76.5 % | 11.8 % | 4.35 M packets | 1.38 cores | 1.19 cores |
-| | after | 0.00 % | 0.00 % | 8.92 M packets | 1.91 cores | 1.42 cores |
-| screen, 4 cameras at 1 Mbit/s, 3 speakers | before | 64.4 % | 49.5 % | 4.48 M packets | 1.38 cores | 1.17 cores |
-| | after | 0.00 % | 0.00 % | 8.99 M packets | 1.91 cores | 1.40 cores |
-| screen and 3 speakers, all through the relay | before | 0.00 % | | 3.56 M packets | 1.31 cores | 0.80 cores |
-| | after | 0.00 % | | 3.55 M packets | 1.24 cores | 0.71 cores |
-
-The server now sends twice the packets for 40 % more CPU: about 24 µs per
-packet instead of 35. Audio lost nothing in any run. The relay shape was not
-limited by the lock and is unchanged within noise; its flap of the earlier runs
-did not occur in either run.
-
-The next limit is the CPU itself. With 120 members (screen, 10 cameras, 3
-speakers) the server used 2.23 cores, the generator 1.46 and the host was 88 %
-busy; the screen then lost 22 % of its packets, again in the tracks' receive
-buffers. About half of the server's CPU in these runs is the kernel's send path
-(the system call itself), the rest mostly Pion's per-packet interceptors;
-encryption is about 5 %.
+Packets fall by 62 to 63 % and server CPU by 56 to 58 %. This is an emulation with a
+fixed talk pattern, not real people: real conversations have fewer speakers
+talking at once than ten, so the saving in an ordinary call is smaller in
+absolute terms, and music or a steady tone (which the encoder may treat as
+silence) is why DTX is off when the noise filter is set to Off and can be
+switched off in Audio settings. The sizing table below assumes continuous
+speakers (50 packets/s each), which is the conservative case.
 
 ## Sizing guide
+
+The model and the table are based on server 2.4.0 and 2.5.0 (the series below). They
+predate the change of 3.3.9 to the SFU's socket, which altered the per-packet cost
+(see [the socket's write lock](#the-mixed-talk-holds-the-sockets-write-lock)); they
+have not been fitted again for later versions.
 
 The question this section answers: how much hardware does a Talk of a given
 size need? It comes from a second series on server 2.4.0 on the same host as
@@ -414,31 +415,6 @@ grid shows four tiles receives with the visible-cameras behaviour.
   cores and at 25 from 0.55 to 0.37, in line with the egress packets that are
   no longer sent.
 
-### Opus DTX (2.6.0)
-
-Server 2.6.0 turns on Opus discontinuous transmission for the microphone, so a
-member who is not speaking sends about five small packets a second instead of
-fifty. The load generator can emulate this (`AUDIO_DTX=1`, with `AUDIO_TALK_PCT`
-the share of time each speaker talks); it sends a 16-byte frame every 200 ms
-while a speaker is silent, which is what Chrome sends. Two cells, 10 speakers
-and the rest of the members listening, each run twice with a 120 s hold, with
-speakers talking 30 % of the time:
-
-| Members | DTX | Egress packets/s | Server CPU (cores) | Audio loss |
-|---:|---|---:|---:|---:|
-| 100 | off | 58,614 | 1.31 | 0 % |
-| 100 | on, 30 % talk time | 22,372 | 0.58 | 0 % |
-| 50 | off | 28,216 | 0.67 | 0 % |
-| 50 | on, 30 % talk time | 10,443 | 0.28 | 0 % |
-
-Packets fall by 62 to 63 % and server CPU by 56 to 58 %. This is an emulation with a
-fixed talk pattern, not real people: real conversations have fewer speakers
-talking at once than ten, so the saving in an ordinary call is smaller in
-absolute terms, and music or a steady tone (which the encoder may treat as
-silence) is why DTX is off when the noise filter is set to Off and can be
-switched off in Audio settings. The sizing table above assumes continuous
-speakers (50 packets/s each), which is the conservative case.
-
 ### The scenarios in Admin > Status
 
 The capacity panel of Admin > Status ([operations](operations.md#capacity))
@@ -510,6 +486,64 @@ lost 81 % of the screen's packets on 2.4.0 and 77 % on 2.5.0.
 what the server requests, so a larger kernel limit alone would not have changed
 anything.
 
+## Results on 2.2.0 (history)
+
+The first run, on server 2.2.0. The mixed Talk in this run did not hold; the
+later sections say what changed.
+
+### Chat
+
+Delivery latency is over all receiving sessions, so the 1,000-session run is
+2.36 million measured deliveries. No message, edit or reaction was lost or
+duplicated in any run, and no send request failed.
+
+| Sessions | Writers | Messages p50 / p95 / p99 | Edits p95 | Reactions p95 | Loss | Server CPU (hold / peak) | Server memory (peak) |
+|---------:|--------:|-------------------------:|----------:|--------------:|-----:|-------------------------:|---------------------:|
+| 100 | 10 | 12 / 18 / 26 ms | 30 ms | 13 ms | 0 % | 0.02 / 0.02 cores | 47 MB |
+| 300 | 30 | 14 / 21 / 44 ms | 29 ms | 15 ms | 0 % | 0.09 / 0.10 cores | 62 MB |
+| 1,000 | 100 | 33 / 84 / 115 ms | 147 ms | 65 ms | 0 % | 0.67 / 0.70 cores | 102 MB |
+
+Connecting took 20 ms at most per session. Goroutines returned to their
+starting value (about 60) after every run.
+
+### Voice, direct
+
+99 members received one screen at 1500 kbit/s.
+
+| Members | Received per member | Loss | Freezes | Connect p50 / p95 | First video p50 / p95 | Server CPU (hold / peak) | Server memory (peak) |
+|--------:|--------------------:|-----:|--------:|------------------:|----------------------:|-------------------------:|---------------------:|
+| 100 | 1585 kbit/s (1532 to 1631) | 0.00 % | 0 | 31 / 55 ms | 66 / 374 ms | 0.56 / 0.73 cores | 312 MB |
+
+Longest gap in any member's video: 67 ms. The generator used 0.54 cores.
+
+### Voice, through the built-in TURN relay
+
+| Members | Through the relay | Screen per member | Audio per member | Loss | Freezes | Connect p50 / p95 | Server CPU (hold / peak) | Server memory (peak) |
+|--------:|------------------:|------------------:|-----------------:|-----:|--------:|------------------:|-------------------------:|---------------------:|
+| 100 | 100 of 100 | 1601 kbit/s | 119 kbit/s (3 speakers) | 0.00 % | 1 member, one 12.6 s gap | 1038 / 1058 ms | 1.61 / 1.67 cores | 312 MB |
+
+One member lost its connection once (a "flap") and was frozen for 12.6 seconds
+before it recovered; the scenario's threshold allows no flaps, so it is
+recorded as failed although the other 99 members saw no freeze. The generator
+used 0.82 cores. About 3.3 GB left the server in the two minutes.
+
+### Voice, mixed (does not hold)
+
+One screen, 10 cameras and 3 speakers, every member watching everything:
+roughly 4.5 Mbit/s of video per member, 450 Mbit/s in total out of one machine
+that also runs the generator.
+
+| Members | Screen received | Camera received (per track) | Screen loss | Camera loss | Audio loss | Server CPU (hold / peak) | Server memory (peak) |
+|--------:|----------------:|----------------------------:|------------:|------------:|-----------:|-------------------------:|---------------------:|
+| 100 | 200 kbit/s of 1500 | 134 kbit/s of 300 | 81.6 % | 33.5 % | 0.3 % | 1.87 / 2.06 cores | 1044 MB |
+
+All members connected and none timed out, but most of the video did not arrive.
+The server used about two cores and reached the 1 GB memory limit, and the
+generator used 0.97 cores, so on this machine the run is limited by the shared
+host. We did not determine whether the server, the generator or the loopback
+path was the first bottleneck. Goroutines and heap returned to their starting
+values afterwards, so there is no leak.
+
 ## Limits and caveats
 
 - **One host, one run.** There is no repeat, no variance and no other hardware.
@@ -519,8 +553,8 @@ anything.
 - **Loopback network.** No packet loss, jitter or bandwidth limit between the
   generator and the server. Real members on the internet add their own latency,
   and the relay figure does not include a real uplink.
-- **Rate limits shape the setup, not the capacity.** The server allows 120
-  WebSocket upgrades per minute per address, so the chat test connected 100
+- **Rate limits shape the setup, not the capacity.** In the first run (2.2.0) the server
+  allowed 120 WebSocket upgrades per minute per address, so the chat test connected 100
   sessions a minute (1,000 sessions took ten minutes to connect), and the relay
   accepts 120 allocation requests per minute per member and holds 256
   allocations in total. These are configured
