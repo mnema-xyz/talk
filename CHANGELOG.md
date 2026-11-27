@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.17](https://github.com/mnema-xyz/talk/compare/v3.3.16...v3.3.17) (2026-11-27)
+
+
+### Documentation
+
+* label each benchmark result with its server version ([#944](https://github.com/mnema-xyz/talk/issues/944)) ([8644057](https://github.com/mnema-xyz/talk/commit/86440573662d38a63e9ef42b9d391cee52c4da9a))
+
 ## [3.3.16](https://github.com/mnema-xyz/talk/compare/v3.3.15...v3.3.16) (2026-11-26)
 
 
